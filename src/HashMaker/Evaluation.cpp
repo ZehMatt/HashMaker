@@ -85,9 +85,13 @@ void Evaluation::reset()
     _hashSize = _parameters.hashSize;
 }
 
-double Evaluation::evaluate(const Genome_t& genome)
+void Evaluation::evaluate(Genome_t& genome)
 {
     const std::vector<Buffer>& testData = _testData;
+
+    genome.fitness = 0.0;
+    genome.collisionRate = 0.0;
+    genome.stateUsage = 0.0;
 
     // Check if operators have effect via input first.
     {
@@ -109,7 +113,7 @@ double Evaluation::evaluate(const Genome_t& genome)
 
         if (ctx1.data == ctx2.data)
         {
-            return 0.0f;
+            return;
         }
     }
 
@@ -120,15 +124,19 @@ double Evaluation::evaluate(const Genome_t& genome)
     double collisions = 0.0;
     double operations = (double)genome.operators.size();
 
-    size_t k_MaxIterations = 500'000;
-    size_t dataSize = 16;
+    size_t k_MaxIterations = 10'000'000;
+    size_t dataSize = 4;
 
     DataGenerator gen;
     gen.resize(dataSize);
 
     double numTests = 0.0;
-    double usedStates = 0.0;
+    double statesWritten = 0.0;
+    double statesRead = 0.0;
     double totalStates = 0.0;
+
+    HashContext_t ctx = {};
+
     for(size_t iter = 0; iter < k_MaxIterations; iter++)
     {
         const std::vector<uint8_t>& buffer = gen.next();
@@ -136,8 +144,6 @@ double Evaluation::evaluate(const Genome_t& genome)
             break;
 
         numTests++;
-
-        HashContext_t ctx = {};
         ctx.reset(_hashSize);
 
         for (auto&& byte : buffer)
@@ -156,19 +162,25 @@ double Evaluation::evaluate(const Genome_t& genome)
             collisions++;
         }
 
-        usedStates += ctx.countUsed();
+        statesWritten += ctx.countWrites();
+        statesRead += ctx.countReads();
         totalStates += _hashSize;
     }
 
     double fitnessOperations = (operations - (double)_parameters.minOperators) / (double)(_parameters.maxOperators - _parameters.minOperators);
     fitnessOperations = 1.0 - fitnessOperations;
 
-    double fitnessCollisions = 1.0 - (collisions / numTests);
+    double collisionRate = (collisions / numTests);
+    double fitnessCollisions = 1.0 - collisionRate;
 
-    double fitnessStateUsed = usedStates / totalStates;
+    double fitnessStateWrite = statesWritten / totalStates;
+    double fitnessStateRead = statesRead / totalStates;
+    double fitnessState = (fitnessStateWrite + fitnessStateRead) / 2.0;
 
-    double totalFitness = fitnessOperations + fitnessCollisions + fitnessStateUsed;
+    double totalFitness = (fitnessOperations + fitnessCollisions + fitnessState);
 
-    return std::pow(totalFitness, 4);
+    genome.fitness = std::pow(totalFitness, 4);
+    genome.stateUsage = fitnessState;
+    genome.collisionRate = collisionRate;
 }
 

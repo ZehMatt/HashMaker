@@ -34,7 +34,7 @@ public:
     virtual void run(HashContext_t& context) override
     {
         context.data[_index] = context.currentInput;
-        context.used[_index] = true;
+        context.dataFlags[_index] |= HashContext_t::k_DataFlagWrite;
     }
 
     virtual std::unique_ptr<IHashOperator> clone() override
@@ -63,7 +63,7 @@ public:
     virtual void run(HashContext_t& context) override
     {
         context.data[_index] = _value;
-        context.used[_index] = true;
+        context.dataFlags[_index] |= HashContext_t::k_DataFlagWrite;
     }
 
     virtual std::unique_ptr<IHashOperator> clone() override
@@ -92,7 +92,7 @@ public:
     virtual void run(HashContext_t& context) override
     {
         context.data[_index] *= _value;
-        context.used[_index] = true;
+        context.dataFlags[_index] |= HashContext_t::k_DataFlagWrite;
     }
 
     virtual std::unique_ptr<IHashOperator> clone() override
@@ -121,7 +121,7 @@ public:
     virtual void run(HashContext_t& context) override
     {
         context.data[_index] *= _value;
-        context.used[_index] = true;
+        context.dataFlags[_index] |= HashContext_t::k_DataFlagWrite;
     }
 
     virtual std::unique_ptr<IHashOperator> clone() override
@@ -150,7 +150,7 @@ public:
     virtual void run(HashContext_t& context) override
     {
         context.data[_index] *= _value;
-        context.used[_index] = true;
+        context.dataFlags[_index] |= HashContext_t::k_DataFlagWrite;
     }
 
     virtual std::unique_ptr<IHashOperator> clone() override
@@ -179,7 +179,7 @@ public:
     virtual void run(HashContext_t& context) override
     {
         context.data[_index] *= _value;
-        context.used[_index] = true;
+        context.dataFlags[_index] |= HashContext_t::k_DataFlagWrite;
     }
 
     virtual std::unique_ptr<IHashOperator> clone() override
@@ -208,7 +208,7 @@ public:
     virtual void run(HashContext_t& context) override
     {
         context.data[_index] *= _value;
-        context.used[_index] = true;
+        context.dataFlags[_index] |= HashContext_t::k_DataFlagWrite;
     }
 
     virtual std::unique_ptr<IHashOperator> clone() override
@@ -237,7 +237,7 @@ public:
     virtual void run(HashContext_t& context) override
     {
         context.data[_index] *= _value;
-        context.used[_index] = true;
+        context.dataFlags[_index] |= HashContext_t::k_DataFlagWrite;
     }
 
     virtual std::unique_ptr<IHashOperator> clone() override
@@ -266,7 +266,7 @@ public:
     virtual void run(HashContext_t& context) override
     {
         context.data[_index] ^= context.currentInput;
-        context.used[_index] = true;
+        context.dataFlags[_index] |= HashContext_t::k_DataFlagWrite;
     }
 
     virtual std::unique_ptr<IHashOperator> clone() override
@@ -295,7 +295,7 @@ public:
     virtual void run(HashContext_t& context) override
     {
         context.data[_index] ^= context.currentInput;
-        context.used[_index] = true;
+        context.dataFlags[_index] |= HashContext_t::k_DataFlagWrite;
     }
 
     virtual std::unique_ptr<IHashOperator> clone() override
@@ -324,7 +324,7 @@ public:
     virtual void run(HashContext_t& context) override
     {
         context.data[_index] += context.currentInput;
-        context.used[_index] = true;
+        context.dataFlags[_index] |= HashContext_t::k_DataFlagWrite;
     }
 
     virtual std::unique_ptr<IHashOperator> clone() override
@@ -353,7 +353,7 @@ public:
     virtual void run(HashContext_t& context) override
     {
         context.data[_index] -= context.currentInput;
-        context.used[_index] = true;
+        context.dataFlags[_index] |= HashContext_t::k_DataFlagWrite;
     }
 
     virtual std::unique_ptr<IHashOperator> clone() override
@@ -382,7 +382,8 @@ public:
     virtual void run(HashContext_t& context) override
     {
         context.data[_index1] = context.data[_index2];
-        context.used[_index1] = true;
+        context.dataFlags[_index1] |= HashContext_t::k_DataFlagWrite;
+        context.dataFlags[_index2] |= HashContext_t::k_DataFlagRead;
     }
 
     virtual std::unique_ptr<IHashOperator> clone() override
@@ -411,7 +412,8 @@ public:
     virtual void run(HashContext_t& context) override
     {
         context.data[_index1] ^= context.data[_index2];
-        context.used[_index1] = true;
+        context.dataFlags[_index1] |= HashContext_t::k_DataFlagWrite;
+        context.dataFlags[_index2] |= HashContext_t::k_DataFlagRead;
     }
 
     virtual std::unique_ptr<IHashOperator> clone() override
@@ -440,7 +442,8 @@ public:
     virtual void run(HashContext_t& context) override
     {
         context.data[_index1] -= context.data[_index2];
-        context.used[_index1] = true;
+        context.dataFlags[_index1] |= HashContext_t::k_DataFlagWrite;
+        context.dataFlags[_index2] |= HashContext_t::k_DataFlagRead;
     }
 
     virtual std::unique_ptr<IHashOperator> clone() override
@@ -469,7 +472,8 @@ public:
     virtual void run(HashContext_t& context) override
     {
         context.data[_index1] += context.data[_index2];
-        context.used[_index1] = true;
+        context.dataFlags[_index1] |= HashContext_t::k_DataFlagWrite;
+        context.dataFlags[_index2] |= HashContext_t::k_DataFlagRead;
     }
 
     virtual std::unique_ptr<IHashOperator> clone() override
@@ -497,7 +501,7 @@ public:
     virtual void run(HashContext_t& context) override
     {
         context.data[_index] = ~context.data[_index];
-        context.used[_index] = true;
+        context.dataFlags[_index] |= HashContext_t::k_DataFlagWrite | HashContext_t::k_DataFlagRead;
     }
 
     virtual std::unique_ptr<IHashOperator> clone() override

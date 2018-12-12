@@ -4,6 +4,7 @@
 int main()
 {
     HashMakerParams params;
+    params.hashSize = 4;
 
     HashMaker maker;
     maker.reset(params);

@@ -19,5 +19,5 @@ public:
 
     void reset();
 
-    double evaluate(const Genome_t& genome);
+    void evaluate(Genome_t& genome);
 };

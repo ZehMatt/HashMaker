@@ -52,6 +52,9 @@ void HashMaker::evaluate()
         Genome_t& best = _population[bestIndex];
 
         _bestSolution.fitness = best.fitness;
+        _bestSolution.collisionRate = best.collisionRate;
+        _bestSolution.stateUsage = best.stateUsage;
+
         _bestSolution.operators.clear();
         for (auto&& op : best.operators)
         {
@@ -73,8 +76,7 @@ void HashMaker::evaluatePopulation()
 
 void HashMaker::evaluateGenome(Genome_t& genome)
 {
-    double fitness = _evaluator.evaluate(genome);
-    genome.fitness = fitness;
+    _evaluator.evaluate(genome);
 }
 
 void HashMaker::epoch()
@@ -96,8 +98,11 @@ void HashMaker::printStats()
         solution += op->toString();
     }
 
-    printf("Generation: %zu ; Best Fitness: %.08f ; Solution: %s\n", _generation, 
-        _bestSolution.fitness, 
+    printf("Generation: %zu ; Fitness: %.08f ; Collisions: %.08f ; State: %.08f; -> %s\n",
+        _generation, 
+        _bestSolution.fitness,
+        _bestSolution.collisionRate,
+        _bestSolution.stateUsage,
         solution.c_str());
 }
 
@@ -105,7 +110,7 @@ void HashMaker::epoch1()
 {
     std::sort(_population.begin(), _population.end(), [](const Genome_t& a, const Genome_t& b)->bool
     {
-        return a.fitness < b.fitness;
+        return a.fitness > b.fitness;
     });
 
     size_t half = _population.size();

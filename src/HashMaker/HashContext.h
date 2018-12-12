@@ -5,27 +5,43 @@
 
 struct HashContext_t
 {
+    enum { 
+        k_DataFlagRead = (1 << 1), 
+        k_DataFlagWrite = (1 << 2) 
+    };
+
     std::vector<uint8_t> data;
-    std::vector<uint8_t> used;
+    std::vector<uint8_t> dataFlags;
     uint8_t currentInput;
 
     void reset(size_t size)
     {
         data.resize(size);
-        used.resize(size);
+        dataFlags.resize(size);
         for (size_t i = 0; i < size; i++)
         {
             data[i] = 0;
-            used[i] = 0;
+            dataFlags[i] = 0;
         }
     }
 
-    size_t countUsed() const
+    size_t countReads() const
     {
         size_t res = 0;
-        for (auto&& n : used)
+        for (auto&& n : dataFlags)
         {
-            if(n)
+            if((n & k_DataFlagRead) != 0)
+                res++;
+        }
+        return res;
+    }
+
+    size_t countWrites() const
+    {
+        size_t res = 0;
+        for (auto&& n : dataFlags)
+        {
+            if ((n & k_DataFlagWrite) != 0)
                 res++;
         }
         return res;
