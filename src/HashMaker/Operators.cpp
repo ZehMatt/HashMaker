@@ -6,7 +6,13 @@ enum HashOperatorTypes : size_t
     HashOperatorTypeStateMovInput = 0,
     HashOperatorTypeStateMovMagic,
     HashOperatorTypeStateMulMagic,
+    HashOperatorTypeStateAndMagic,
+    HashOperatorTypeStateShlMagic,
+    HashOperatorTypeStateShrMagic,
+    HashOperatorTypeStateOrMagic,
+    HashOperatorTypeStateXorMagic,
     HashOperatorTypeStateXorInput,
+    HashOperatorTypeStateAndInput,
     HashOperatorTypeStateAddInput,
     HashOperatorTypeStateSubInput,
     HashOperatorTypeStateMovState,
@@ -102,6 +108,151 @@ public:
     }
 };
 
+class HashOperatorStateAndMagic : public IHashOperator
+{
+    size_t _index;
+    uint8_t _value;
+public:
+    enum {
+        k_Type = HashOperatorTypeStateAndMagic
+    };
+    HashOperatorStateAndMagic(size_t index, uint8_t value) : _index(index), _value(value) {}
+
+    virtual void run(HashContext_t& context) override
+    {
+        context.data[_index] *= _value;
+        context.used[_index] = true;
+    }
+
+    virtual std::unique_ptr<IHashOperator> clone() override
+    {
+        return std::make_unique<HashOperatorStateAndMagic>(_index, _value);
+    }
+
+    virtual std::string toString() override
+    {
+        char str[100] = {};
+        sprintf_s(str, "V[%zu] &= %u", _index, _value);
+        return str;
+    }
+};
+
+class HashOperatorStateShlMagic : public IHashOperator
+{
+    size_t _index;
+    uint8_t _value;
+public:
+    enum {
+        k_Type = HashOperatorTypeStateShlMagic
+    };
+    HashOperatorStateShlMagic(size_t index, uint8_t value) : _index(index), _value(value) {}
+
+    virtual void run(HashContext_t& context) override
+    {
+        context.data[_index] *= _value;
+        context.used[_index] = true;
+    }
+
+    virtual std::unique_ptr<IHashOperator> clone() override
+    {
+        return std::make_unique<HashOperatorStateShlMagic>(_index, _value);
+    }
+
+    virtual std::string toString() override
+    {
+        char str[100] = {};
+        sprintf_s(str, "V[%zu] <<= %u", _index, _value);
+        return str;
+    }
+};
+
+class HashOperatorStateShrMagic : public IHashOperator
+{
+    size_t _index;
+    uint8_t _value;
+public:
+    enum {
+        k_Type = HashOperatorTypeStateShrMagic
+    };
+    HashOperatorStateShrMagic(size_t index, uint8_t value) : _index(index), _value(value) {}
+
+    virtual void run(HashContext_t& context) override
+    {
+        context.data[_index] *= _value;
+        context.used[_index] = true;
+    }
+
+    virtual std::unique_ptr<IHashOperator> clone() override
+    {
+        return std::make_unique<HashOperatorStateShrMagic>(_index, _value);
+    }
+
+    virtual std::string toString() override
+    {
+        char str[100] = {};
+        sprintf_s(str, "V[%zu] >>= %u", _index, _value);
+        return str;
+    }
+};
+
+class HashOperatorStateOrMagic : public IHashOperator
+{
+    size_t _index;
+    uint8_t _value;
+public:
+    enum {
+        k_Type = HashOperatorTypeStateOrMagic
+    };
+    HashOperatorStateOrMagic(size_t index, uint8_t value) : _index(index), _value(value) {}
+
+    virtual void run(HashContext_t& context) override
+    {
+        context.data[_index] *= _value;
+        context.used[_index] = true;
+    }
+
+    virtual std::unique_ptr<IHashOperator> clone() override
+    {
+        return std::make_unique<HashOperatorStateOrMagic>(_index, _value);
+    }
+
+    virtual std::string toString() override
+    {
+        char str[100] = {};
+        sprintf_s(str, "V[%zu] |= %u", _index, _value);
+        return str;
+    }
+};
+
+class HashOperatorStateXorMagic : public IHashOperator
+{
+    size_t _index;
+    uint8_t _value;
+public:
+    enum {
+        k_Type = HashOperatorTypeStateXorMagic
+    };
+    HashOperatorStateXorMagic(size_t index, uint8_t value) : _index(index), _value(value) {}
+
+    virtual void run(HashContext_t& context) override
+    {
+        context.data[_index] *= _value;
+        context.used[_index] = true;
+    }
+
+    virtual std::unique_ptr<IHashOperator> clone() override
+    {
+        return std::make_unique<HashOperatorStateXorMagic>(_index, _value);
+    }
+
+    virtual std::string toString() override
+    {
+        char str[100] = {};
+        sprintf_s(str, "V[%zu] ^= %u", _index, _value);
+        return str;
+    }
+};
+
 class HashOperatorStateXorInput : public IHashOperator
 {
     size_t _index;
@@ -127,6 +278,35 @@ public:
     {
         char str[100] = {};
         sprintf_s(str, "V[%zu] ^= IN", _index);
+        return str;
+    }
+};
+
+class HashOperatorStateAndInput : public IHashOperator
+{
+    size_t _index;
+
+public:
+    enum {
+        k_Type = HashOperatorTypeStateAndInput
+    };
+    HashOperatorStateAndInput(size_t index) : _index(index) {}
+
+    virtual void run(HashContext_t& context) override
+    {
+        context.data[_index] ^= context.currentInput;
+        context.used[_index] = true;
+    }
+
+    virtual std::unique_ptr<IHashOperator> clone() override
+    {
+        return std::make_unique<HashOperatorStateAndInput>(_index);
+    }
+
+    virtual std::string toString() override
+    {
+        char str[100] = {};
+        sprintf_s(str, "V[%zu] &= IN", _index);
         return str;
     }
 };
@@ -338,7 +518,13 @@ constexpr std::pair<size_t, double> k_Operators[] =
     { HashOperatorStateMovInput::k_Type, 1.0 },
     { HashOperatorStateMovMagic::k_Type, 1.0 },
     { HashOperatorStateMulMagic::k_Type, 1.0 },
+    { HashOperatorStateAndMagic::k_Type, 1.0 },
+    { HashOperatorStateShlMagic::k_Type, 1.0 },
+    { HashOperatorStateShrMagic::k_Type, 1.0 },
+    { HashOperatorStateOrMagic::k_Type, 1.0 },
+    { HashOperatorStateXorMagic::k_Type, 1.0 },
     { HashOperatorStateXorInput::k_Type, 1.0 },
+    { HashOperatorStateAndInput::k_Type, 1.0 },
     { HashOperatorStateAddInput::k_Type, 1.0 },
     { HashOperatorStateSubInput::k_Type, 1.0 },
     { HashOperatorStateMovState::k_Type, 1.0 },
@@ -397,10 +583,51 @@ void CreateOperators(const HashMakerParams& params, Genome_t& genome, Random& ra
                 op = std::make_unique<HashOperatorStateMulMagic>(index, value);
             }
             break;
+        case HashOperatorStateAndMagic::k_Type:
+            {
+                size_t index = random.randomIntegerRange(params.hashSize - 1);
+                uint8_t value = random.randomIntegerRange(0x00, 0xFF);
+                op = std::make_unique<HashOperatorStateAndMagic>(index, value);
+            }
+            break;
+        case HashOperatorStateShlMagic::k_Type:
+            {
+                size_t index = random.randomIntegerRange(params.hashSize - 1);
+                uint8_t value = random.randomIntegerRange(0x01, 0x04);
+                op = std::make_unique<HashOperatorStateShlMagic>(index, value);
+            }
+            break;
+        case HashOperatorStateShrMagic::k_Type:
+            {
+                size_t index = random.randomIntegerRange(params.hashSize - 1);
+                uint8_t value = random.randomIntegerRange(0x01, 0x04);
+                op = std::make_unique<HashOperatorStateShrMagic>(index, value);
+            }
+            break;
+        case HashOperatorStateOrMagic::k_Type:
+            {
+                size_t index = random.randomIntegerRange(params.hashSize - 1);
+                uint8_t value = random.randomIntegerRange(0x00, 0xFF);
+                op = std::make_unique<HashOperatorStateOrMagic>(index, value);
+            }
+            break;
+        case HashOperatorStateXorMagic::k_Type:
+            {
+                size_t index = random.randomIntegerRange(params.hashSize - 1);
+                uint8_t value = random.randomIntegerRange(0x00, 0xFF);
+                op = std::make_unique<HashOperatorStateXorMagic>(index, value);
+            }
+            break;
         case HashOperatorStateXorInput::k_Type:
             {
                 size_t index = random.randomIntegerRange(params.hashSize - 1);
                 op = std::make_unique<HashOperatorStateXorInput>(index);
+            }
+            break;
+        case HashOperatorStateAndInput::k_Type:
+            {
+                size_t index = random.randomIntegerRange(params.hashSize - 1);
+                op = std::make_unique<HashOperatorStateAndInput>(index);
             }
             break;
         case HashOperatorStateAddInput::k_Type:
