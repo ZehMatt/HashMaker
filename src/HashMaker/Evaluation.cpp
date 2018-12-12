@@ -6,8 +6,6 @@
 
 #include <unordered_set>
 
-using Buffer = std::vector<uint8_t>;
-
 struct BufferHash
 {
     size_t operator()(const Buffer& data) const
@@ -22,43 +20,79 @@ struct BufferHash
     }
 };
 
-using HashCollection = std::unordered_set< Buffer, BufferHash >;
+using HashCollection = std::unordered_set<Buffer, BufferHash>;
 
-const std::vector<Buffer>& GetTestData(const HashMakerParams& params)
+struct DataGenerator
 {
-    static std::vector<Buffer> data;
-
-    Random rnd(params.seed);
-
-    if (data.size() != params.countTestData)
+    void resize(size_t n)
     {
-        data.resize(params.countTestData);
-
-        for (size_t i = 0; i < params.countTestData; i++)
-        {
-            Buffer& buf = data[i];
-            
-            size_t len = rnd.randomIntegerRange(params.minDataSize, params.maxDataSize);
-            buf.resize(len);
-
-            for (size_t n = 0; n < len; n++)
-            {
-                buf[n] = (uint8_t)rnd.randomIntegerRange(0x00, 0xFF);
-            }
-        }
+        states.resize(n);
+        state.resize(n);
     }
 
+    const std::vector<uint8_t>& next()
+    {
+        std::vector<uint8_t> res;
+        res.resize(states.size());
+
+        int32_t n = (int32_t)states.size() - 1;
+        int32_t updateIndex = n;
+
+        while (n >= 0)
+        {
+            state[n] = (uint8_t)states[n];
+
+            if (updateIndex == n)
+            {
+                states[n]++;
+                if (states[n] > 0xFF)
+                {
+                    states[n] = 0;
+                    updateIndex--;
+                }
+            }
+
+            n--;
+        }
+        if (updateIndex < 0)
+        {
+            states.push_back(0);
+            state.push_back(0);
+        }
+
+        return state;
+    }
+
+private:
+    std::vector<int32_t> states;
+    std::vector<uint8_t> state;
+};
+
+static std::vector<Buffer> CreateTestData(const HashMakerParams& params)
+{
+    std::vector<Buffer> data;
     return data;
 }
 
-double Evaluation::evaluate(const HashMakerParams& params, const Genome_t& genome)
+Evaluation::Evaluation(HashMakerParams& parameters)
+    : _parameters(parameters)
 {
-    const std::vector<Buffer>& testData = GetTestData(params);
+}
+
+void Evaluation::reset()
+{
+    _testData = CreateTestData(_parameters);
+    _hashSize = _parameters.hashSize;
+}
+
+double Evaluation::evaluate(const Genome_t& genome)
+{
+    const std::vector<Buffer>& testData = _testData;
 
     // Check if operators have effect via input first.
     {
         HashContext_t ctx1 = {};
-        ctx1.reset(params.hashSize);
+        ctx1.reset(_hashSize);
         ctx1.currentInput = 0x00;
         for (const auto& op : genome.operators)
         {
@@ -66,7 +100,7 @@ double Evaluation::evaluate(const HashMakerParams& params, const Genome_t& genom
         }
 
         HashContext_t ctx2 = {};
-        ctx2.reset(params.hashSize);
+        ctx2.reset(_hashSize);
         ctx2.currentInput = 0xFF;
         for (const auto& op : genome.operators)
         {
@@ -86,10 +120,25 @@ double Evaluation::evaluate(const HashMakerParams& params, const Genome_t& genom
     double collisions = 0.0;
     double operations = (double)genome.operators.size();
 
-    for (auto&& buffer : testData)
+    size_t k_MaxIterations = 500'000;
+    size_t dataSize = 16;
+
+    DataGenerator gen;
+    gen.resize(dataSize);
+
+    double numTests = 0.0;
+    double usedStates = 0.0;
+    double totalStates = 0.0;
+    for(size_t iter = 0; iter < k_MaxIterations; iter++)
     {
+        const std::vector<uint8_t>& buffer = gen.next();
+        if(buffer.size() > dataSize)
+            break;
+
+        numTests++;
+
         HashContext_t ctx = {};
-        ctx.reset(params.hashSize);
+        ctx.reset(_hashSize);
 
         for (auto&& byte : buffer)
         {
@@ -106,14 +155,19 @@ double Evaluation::evaluate(const HashMakerParams& params, const Genome_t& genom
         {
             collisions++;
         }
+
+        usedStates += ctx.countUsed();
+        totalStates += _hashSize;
     }
 
-    double fitnessOperations = (operations - (double)params.minOperators) / (double)(params.maxOperators - params.minOperators);
+    double fitnessOperations = (operations - (double)_parameters.minOperators) / (double)(_parameters.maxOperators - _parameters.minOperators);
     fitnessOperations = 1.0 - fitnessOperations;
 
-    double fitnessCollisions = 1.0 - (collisions / (double)testData.size());
+    double fitnessCollisions = 1.0 - (collisions / numTests);
 
-    double totalFitness = fitnessOperations + fitnessCollisions;
+    double fitnessStateUsed = usedStates / totalStates;
+
+    double totalFitness = fitnessOperations + fitnessCollisions + fitnessStateUsed;
 
     return std::pow(totalFitness, 4);
 }

@@ -2,13 +2,14 @@
 #include "Operator.h"
 #include "Evaluation.h"
 
-HashMaker::HashMaker()
+HashMaker::HashMaker() : _evaluator(_parameters)
 {
     reset(HashMakerParams());
 }
 
 void HashMaker::reset(const HashMakerParams& params)
 {
+    _parameters = params;
     _random.seed(params.seed);
     _generation = 0;
 
@@ -19,6 +20,8 @@ void HashMaker::reset(const HashMakerParams& params)
     {
         initializeGenome(_population[i]);
     }
+
+    _evaluator.reset();
 }
 
 void HashMaker::initializeGenome(Genome_t& genome)
@@ -31,11 +34,11 @@ void HashMaker::evaluate()
     double bestFitness = 0.0;
     size_t bestIndex = 0;
 
+    evaluatePopulation();
+
     for (size_t i = 0; i < _population.size(); i++)
     {
         Genome_t& genome = _population[i];
-
-        evaluateGenome(genome);
 
         if (genome.fitness > bestFitness)
         {
@@ -57,9 +60,20 @@ void HashMaker::evaluate()
     }
 }
 
+void HashMaker::evaluatePopulation()
+{
+#pragma omp parallel for
+    for (int32_t i = 0; i < _population.size(); i++)
+    {
+        Genome_t& genome = _population[i];
+
+        evaluateGenome(genome);
+    }
+}
+
 void HashMaker::evaluateGenome(Genome_t& genome)
 {
-    double fitness = _evaluator.evaluate(_parameters, genome);
+    double fitness = _evaluator.evaluate(genome);
     genome.fitness = fitness;
 }
 

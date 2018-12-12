@@ -19,6 +19,7 @@ public:
     void reset(const HashMakerParams& params);
 
     void evaluate();
+    void evaluatePopulation();
     void epoch();
     void printStats();
 

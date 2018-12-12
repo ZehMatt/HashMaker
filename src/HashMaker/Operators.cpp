@@ -4,6 +4,7 @@
 enum HashOperatorTypes : size_t
 {
     HashOperatorTypeStateMovInput = 0,
+    HashOperatorTypeStateMovMagic,
     HashOperatorTypeStateMulMagic,
     HashOperatorTypeStateXorInput,
     HashOperatorTypeStateAddInput,
@@ -27,6 +28,7 @@ public:
     virtual void run(HashContext_t& context) override
     {
         context.data[_index] = context.currentInput;
+        context.used[_index] = true;
     }
 
     virtual std::unique_ptr<IHashOperator> clone() override
@@ -37,7 +39,36 @@ public:
     virtual std::string toString() override
     {
         char str[100] = {};
-        sprintf_s(str, "STATE[%zu] = INPUT", _index);
+        sprintf_s(str, "V[%zu] = IN", _index);
+        return str;
+    }
+};
+
+class HashOperatorStateMovMagic : public IHashOperator
+{
+    size_t _index;
+    uint8_t _value;
+public:
+    enum {
+        k_Type = HashOperatorTypeStateMovMagic
+    };
+    HashOperatorStateMovMagic(size_t index, uint8_t value) : _index(index), _value(value) {}
+
+    virtual void run(HashContext_t& context) override
+    {
+        context.data[_index] = _value;
+        context.used[_index] = true;
+    }
+
+    virtual std::unique_ptr<IHashOperator> clone() override
+    {
+        return std::make_unique<HashOperatorStateMovMagic>(_index, _value);
+    }
+
+    virtual std::string toString() override
+    {
+        char str[100] = {};
+        sprintf_s(str, "V[%zu] *= %u", _index, _value);
         return str;
     }
 };
@@ -55,6 +86,7 @@ public:
     virtual void run(HashContext_t& context) override
     {
         context.data[_index] *= _value;
+        context.used[_index] = true;
     }
 
     virtual std::unique_ptr<IHashOperator> clone() override
@@ -65,7 +97,7 @@ public:
     virtual std::string toString() override
     {
         char str[100] = {};
-        sprintf_s(str, "STATE[%zu] *= %u", _index, _value);
+        sprintf_s(str, "V[%zu] *= %u", _index, _value);
         return str;
     }
 };
@@ -83,6 +115,7 @@ public:
     virtual void run(HashContext_t& context) override
     {
         context.data[_index] ^= context.currentInput;
+        context.used[_index] = true;
     }
 
     virtual std::unique_ptr<IHashOperator> clone() override
@@ -93,7 +126,7 @@ public:
     virtual std::string toString() override
     {
         char str[100] = {};
-        sprintf_s(str, "STATE[%zu] ^= INPUT", _index);
+        sprintf_s(str, "V[%zu] ^= IN", _index);
         return str;
     }
 };
@@ -111,6 +144,7 @@ public:
     virtual void run(HashContext_t& context) override
     {
         context.data[_index] += context.currentInput;
+        context.used[_index] = true;
     }
 
     virtual std::unique_ptr<IHashOperator> clone() override
@@ -121,7 +155,7 @@ public:
     virtual std::string toString() override
     {
         char str[100] = {};
-        sprintf_s(str, "STATE[%zu] += INPUT", _index);
+        sprintf_s(str, "V[%zu] += IN", _index);
         return str;
     }
 };
@@ -139,6 +173,7 @@ public:
     virtual void run(HashContext_t& context) override
     {
         context.data[_index] -= context.currentInput;
+        context.used[_index] = true;
     }
 
     virtual std::unique_ptr<IHashOperator> clone() override
@@ -149,7 +184,7 @@ public:
     virtual std::string toString() override
     {
         char str[100] = {};
-        sprintf_s(str, "STATE[%zu] -= INPUT", _index);
+        sprintf_s(str, "V[%zu] -= IN", _index);
         return str;
     }
 };
@@ -167,6 +202,7 @@ public:
     virtual void run(HashContext_t& context) override
     {
         context.data[_index1] = context.data[_index2];
+        context.used[_index1] = true;
     }
 
     virtual std::unique_ptr<IHashOperator> clone() override
@@ -177,7 +213,7 @@ public:
     virtual std::string toString() override
     {
         char str[100] = {};
-        sprintf_s(str, "STATE[%zu] = STATE[%zu]", _index1, _index2);
+        sprintf_s(str, "V[%zu] = V[%zu]", _index1, _index2);
         return str;
     }
 };
@@ -195,6 +231,7 @@ public:
     virtual void run(HashContext_t& context) override
     {
         context.data[_index1] ^= context.data[_index2];
+        context.used[_index1] = true;
     }
 
     virtual std::unique_ptr<IHashOperator> clone() override
@@ -205,7 +242,7 @@ public:
     virtual std::string toString() override
     {
         char str[100] = {};
-        sprintf_s(str, "STATE[%zu] ^= STATE[%zu]", _index1, _index2);
+        sprintf_s(str, "V[%zu] ^= V[%zu]", _index1, _index2);
         return str;
     }
 };
@@ -223,6 +260,7 @@ public:
     virtual void run(HashContext_t& context) override
     {
         context.data[_index1] -= context.data[_index2];
+        context.used[_index1] = true;
     }
 
     virtual std::unique_ptr<IHashOperator> clone() override
@@ -233,7 +271,7 @@ public:
     virtual std::string toString() override
     {
         char str[100] = {};
-        sprintf_s(str, "STATE[%zu] -= STATE[%zu]", _index1, _index2);
+        sprintf_s(str, "V[%zu] -= V[%zu]", _index1, _index2);
         return str;
     }
 };
@@ -251,6 +289,7 @@ public:
     virtual void run(HashContext_t& context) override
     {
         context.data[_index1] += context.data[_index2];
+        context.used[_index1] = true;
     }
 
     virtual std::unique_ptr<IHashOperator> clone() override
@@ -261,7 +300,7 @@ public:
     virtual std::string toString() override
     {
         char str[100] = {};
-        sprintf_s(str, "STATE[%zu] += STATE[%zu]", _index1, _index2);
+        sprintf_s(str, "V[%zu] += V[%zu]", _index1, _index2);
         return str;
     }
 };
@@ -278,6 +317,7 @@ public:
     virtual void run(HashContext_t& context) override
     {
         context.data[_index] = ~context.data[_index];
+        context.used[_index] = true;
     }
 
     virtual std::unique_ptr<IHashOperator> clone() override
@@ -288,7 +328,7 @@ public:
     virtual std::string toString() override
     {
         char str[100] = {};
-        sprintf_s(str, "STATE[%zu] = ~STATE[%zu]", _index, _index);
+        sprintf_s(str, "V[%zu] = ~V[%zu]", _index, _index);
         return str;
     }
 };
@@ -296,6 +336,7 @@ public:
 constexpr std::pair<size_t, double> k_Operators[] = 
 {
     { HashOperatorStateMovInput::k_Type, 1.0 },
+    { HashOperatorStateMovMagic::k_Type, 1.0 },
     { HashOperatorStateMulMagic::k_Type, 1.0 },
     { HashOperatorStateXorInput::k_Type, 1.0 },
     { HashOperatorStateAddInput::k_Type, 1.0 },
@@ -340,6 +381,13 @@ void CreateOperators(const HashMakerParams& params, Genome_t& genome, Random& ra
             {
                 size_t index = random.randomIntegerRange(params.hashSize - 1);
                 op = std::make_unique<HashOperatorStateMovInput>(index);
+            }
+            break;
+        case HashOperatorStateMovMagic::k_Type:
+            {
+                size_t index = random.randomIntegerRange(params.hashSize - 1);
+                uint8_t value = random.randomIntegerRange(0x00, 0xFF);
+                op = std::make_unique<HashOperatorStateMovMagic>(index, value);
             }
             break;
         case HashOperatorStateMulMagic::k_Type:
