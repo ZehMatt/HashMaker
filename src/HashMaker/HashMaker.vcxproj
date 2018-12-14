@@ -169,6 +169,7 @@
     <ClCompile Include="TestData.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="BlockAllocator.h" />
     <ClInclude Include="Evaluation.h" />
     <ClInclude Include="Genome.h" />
     <ClInclude Include="HashContext.h" />

@@ -4,6 +4,7 @@
 #include "HashContext.h"
 #include "Operator.h"
 #include "TestData.h"
+#include "BlockAllocator.h"
 
 #include <assert.h>
 #include <unordered_set>
@@ -12,6 +13,22 @@ struct BufferHash
 {
     size_t operator()(const Buffer& data) const
     {
+        if (data.size() == 8)
+        {
+            std::hash<uint64_t> hasher;
+            return hasher(*reinterpret_cast<const uint64_t*>(data.data()));
+        }
+        else if (data.size() == 4)
+        {
+            std::hash<uint32_t> hasher;
+            return hasher(*reinterpret_cast<const uint32_t*>(data.data()));
+        }
+        else if (data.size() == 2)
+        {
+            std::hash<uint16_t> hasher;
+            return hasher(*reinterpret_cast<const uint16_t*>(data.data()));
+        }
+
         std::hash<uint8_t> hasher;
         size_t seed = 0;
         for (auto&& elem : data)
@@ -21,8 +38,6 @@ struct BufferHash
         return seed;
     }
 };
-
-using HashCollection = std::unordered_set<Buffer, BufferHash>;
 
 struct DataGenerator
 {
@@ -87,6 +102,8 @@ void Evaluation::reset()
     _hashSize = _parameters.hashSize;
 }
 
+using HashCollection = std::unordered_set<Buffer, BufferHash, std::equal_to<Buffer>, BlockAllocator<Buffer>>;
+
 void Evaluation::evaluate(Genome_t& genome)
 {
     genome.fitness = 0.0;
@@ -115,14 +132,10 @@ void Evaluation::evaluate(Genome_t& genome)
         }
     }
 
-    // Compute hashes for all the test data and store the hash in the collection.
-    static thread_local HashCollection uniqueHashes;
-    uniqueHashes.clear();
+    HashCollection uniqueHashes;
 
     double collisions = 0.0;
     double operations = (double)genome.operators.size();
-
-    size_t k_MaxIterations = 1'000'000;
 
     double numTests = 0.0;
     double statesWritten = 0.0;

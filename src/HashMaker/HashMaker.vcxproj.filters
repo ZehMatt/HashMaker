@@ -16,5 +16,6 @@
     <ClInclude Include="Params.h" />
     <ClInclude Include="Evaluation.h" />
     <ClInclude Include="TestData.h" />
+    <ClInclude Include="BlockAllocator.h" />
   </ItemGroup>
 </Project>
