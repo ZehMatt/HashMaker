@@ -29,7 +29,7 @@ int main(int argc, const char *argv[])
     }
 
     HashMakerParams params;
-    params.hashSize = 2;
+    params.hashSize = 4;
 
     HashMaker maker;
     maker.reset(params);

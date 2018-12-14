@@ -1,11 +1,15 @@
 #include "Operator.h"
 #include "Genome.h"
+
 #include <assert.h>
+#include <intrin.h>
 
 enum HashOperatorTypes : size_t
 {
     HashOperatorTypeStateMovInput = 0,
     HashOperatorTypeStateMovMagic,
+    HashOperatorTypeStateRolMagic,
+    HashOperatorTypeStateRorMagic,
     HashOperatorTypeStateMulMagic,
     HashOperatorTypeStateAndMagic,
     HashOperatorTypeStateShlMagic,
@@ -92,6 +96,121 @@ public:
     {
         char str[100] = {};
         sprintf_s(str, "V[%zu] = IN", _offset);
+        return str;
+    }
+};
+
+template<typename T>
+class HashOperatorStateRolMagic : public IHashOperator, HashOperatorBase
+{
+    size_t _offset;
+    T _value;
+public:
+    enum {
+        k_Type = HashOperatorTypeStateRolMagic
+    };
+    HashOperatorStateRolMagic(size_t offset, uint64_t value) : _offset(offset), _value(T(value)) {}
+
+    virtual void run(HashContext_t& context) override
+    {
+        T val = read<T>(context, _offset);
+        switch (sizeof(T))
+        {
+        case 1:
+            val = (T)_rotl8(val, _value);
+            break;
+        case 2:
+            val = (T)_rotl16(val, _value);
+            break;
+        case 4:
+            val = (T)_rotl(val, _value);
+            break;
+        case 8:
+            val = (T)_rotl64(val, _value);
+            break;
+        }
+        write<T>(context, _offset, _value);
+    }
+
+    virtual void mutatate(HashMakerParams& params, Random& random) override
+    {
+        //size_t newOffset = random.randomIntegerRange<size_t>(0, params.hashSize - sizeof(T) - 1);
+        //_offset = newOffset;
+
+        uint64_t val = random.randomIntegerRange<uint64_t>(0, std::numeric_limits<T>::max());
+        _value = (T)val;
+    }
+
+    virtual bool isValid(HashContext_t& context)
+    {
+        return isOffsetValid(context, _offset, sizeof(T));
+    }
+
+    virtual std::unique_ptr<IHashOperator> clone() override
+    {
+        return std::make_unique<HashOperatorStateRolMagic<T>>(_offset, _value);
+    }
+
+    virtual std::string toString() override
+    {
+        char str[100] = {};
+        sprintf_s(str, "V%zu[%zu] ROL %llu", sizeof(T) * 8, _offset, (uint64_t)_value);
+        return str;
+    }
+};
+
+template<typename T>
+class HashOperatorStateRorMagic : public IHashOperator, HashOperatorBase
+{
+    size_t _offset;
+    T _value;
+public:
+    enum {
+        k_Type = HashOperatorTypeStateRolMagic
+    };
+    HashOperatorStateRorMagic(size_t offset, uint64_t value) : _offset(offset), _value(T(value)) {}
+
+    virtual void run(HashContext_t& context) override
+    {
+        T val = read<T>(context, _offset);
+        switch (sizeof(T))
+        {
+        case 1:
+            val = (T)_rotr8(val, (int)_value);
+            break;
+        case 2:
+            val = (T)_rotr16(val, (int)_value);
+            break;
+        case 4:
+            val = (T)_rotr(val, (int)_value);
+            break;
+        case 8:
+            val = (T)_rotr64(val, (int)_value);
+            break;
+        }
+        write<T>(context, _offset, _value);
+    }
+
+    virtual void mutatate(HashMakerParams& params, Random& random) override
+    {
+        uint64_t val = random.randomIntegerRange<uint64_t>(0, std::numeric_limits<T>::max());
+        _value = (T)val;
+    }
+
+    virtual bool isValid(HashContext_t& context)
+    {
+        return isOffsetValid(context, _offset, sizeof(T));
+    }
+
+    virtual std::unique_ptr<IHashOperator> clone() override
+    {
+        return std::make_unique<HashOperatorStateRorMagic<T>>(_offset, _value);
+    }
+
+    virtual std::string toString() override
+    {
+        char str[100] = {};
+        sprintf_s(str, "V%zu[%zu] ROR %llu", sizeof(T) * 8, _offset, (uint64_t)_value);
         return str;
     }
 };
@@ -767,6 +886,8 @@ constexpr std::pair<size_t, double> k_Operators[] =
 {
     { HashOperatorTypeStateMovInput, 1.0 },
     { HashOperatorTypeStateMovMagic, 1.0 },
+    { HashOperatorTypeStateRolMagic, 1.0 },
+    { HashOperatorTypeStateRorMagic, 1.0 },
     { HashOperatorTypeStateMulMagic, 1.0 },
     { HashOperatorTypeStateAndMagic, 1.0 },
     { HashOperatorTypeStateShlMagic, 1.0 },
@@ -848,6 +969,20 @@ std::unique_ptr<IHashOperator> CreateRandomOperator(const HashMakerParams& param
             size_t offset = getRandomOffset(params, random);
             uint64_t value = random.randomIntegerRange<uint64_t>(0x00, std::numeric_limits<uint64_t>::max());
             op = createOperator<HashOperatorStateMovMagic>(random, offset, value);
+        }
+        break;
+    case HashOperatorTypeStateRolMagic:
+        {
+            size_t offset = getRandomOffset(params, random);
+            uint64_t value = random.randomIntegerRange<uint64_t>(0, 64);
+            op = createOperator<HashOperatorStateRolMagic>(random, offset, value);
+        }
+        break;
+    case HashOperatorTypeStateRorMagic:
+        {
+            size_t offset = getRandomOffset(params, random);
+            uint64_t value = random.randomIntegerRange<uint64_t>(0, 64);
+            op = createOperator<HashOperatorStateRorMagic>(random, offset, value);
         }
         break;
     case HashOperatorTypeStateMulMagic:
