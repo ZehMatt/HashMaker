@@ -28,13 +28,14 @@ int main(int argc, const char *argv[])
         }
     }
 
-    printf("TestData: %zu entries\n", testData.size());
-
     HashMakerParams params;
-    params.hashSize = 4;
+    params.hashSize = 2;
 
     HashMaker maker;
     maker.reset(params);
+
+    printf("TestData: %zu entries\n", testData.size());
+    printf("Requested Hash Size: %zu bits\n", params.hashSize * 8);
 
     while (true)
     {

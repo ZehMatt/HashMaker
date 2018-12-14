@@ -9,6 +9,7 @@ struct HashMakerParams
     size_t hashSize = 16;
     size_t minDataSize = 3;
 
-    double mutationRate = 0.8;
+    double mutationRate = 0.5;
+    double operatorReplaceChance = 0.5;
     double operatorSwapChance = 0.2;
 };

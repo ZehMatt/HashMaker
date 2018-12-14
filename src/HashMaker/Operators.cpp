@@ -53,7 +53,7 @@ protected:
 
     bool isOffsetValid(HashContext_t& context, size_t offset, size_t len)
     {
-        return offset + len < context.data.size();
+        return offset + len <= context.data.size();
     }
 };
 
@@ -74,8 +74,8 @@ public:
 
     virtual void mutatate(HashMakerParams& params, Random& random) override
     {
-        size_t newOffset = random.randomIntegerRange<size_t>(0, params.hashSize - sizeof(T) - 1);
-        _offset = newOffset;
+        //size_t newOffset = random.randomIntegerRange<size_t>(0, params.hashSize - sizeof(T) - 1);
+        //_offset = newOffset;
     }
 
     virtual bool isValid(HashContext_t& context)
@@ -114,8 +114,8 @@ public:
 
     virtual void mutatate(HashMakerParams& params, Random& random) override
     {
-        size_t newOffset = random.randomIntegerRange<size_t>(0, params.hashSize - sizeof(T) - 1);
-        _offset = newOffset;
+        //size_t newOffset = random.randomIntegerRange<size_t>(0, params.hashSize - sizeof(T) - 1);
+        //_offset = newOffset;
 
         uint64_t val = random.randomIntegerRange<uint64_t>(0, std::numeric_limits<T>::max());
         _value = (T)val;
@@ -159,8 +159,8 @@ public:
 
     virtual void mutatate(HashMakerParams& params, Random& random) override
     {
-        size_t newOffset = random.randomIntegerRange<size_t>(0, params.hashSize - sizeof(T) - 1);
-        _offset = newOffset;
+        //size_t newOffset = random.randomIntegerRange<size_t>(0, params.hashSize - sizeof(T) - 1);
+        //_offset = newOffset;
 
         uint64_t val = random.randomIntegerRange<uint64_t>(0, std::numeric_limits<T>::max());
         _value = (T)val;
@@ -204,8 +204,8 @@ public:
 
     virtual void mutatate(HashMakerParams& params, Random& random) override
     {
-        size_t newOffset = random.randomIntegerRange<size_t>(0, params.hashSize - sizeof(T) - 1);
-        _offset = newOffset;
+        //size_t newOffset = random.randomIntegerRange<size_t>(0, params.hashSize - sizeof(T) - 1);
+        //_offset = newOffset;
 
         uint64_t val = random.randomIntegerRange<uint64_t>(0, std::numeric_limits<T>::max());
         _value = (T)val;
@@ -239,7 +239,7 @@ public:
     enum {
         k_Type = HashOperatorTypeStateShlMagic
     };
-    HashOperatorStateShlMagic(size_t offset, uint64_t value) : _offset(offset), _value(T(value)) {}
+    HashOperatorStateShlMagic(size_t offset, uint64_t value) : _offset(offset), _value(T(value) / 4) {}
 
     virtual void run(HashContext_t& context) override
     {
@@ -250,9 +250,6 @@ public:
 
     virtual void mutatate(HashMakerParams& params, Random& random) override
     {
-        size_t newOffset = random.randomIntegerRange<size_t>(0, params.hashSize - sizeof(T) - 1);
-        _offset = newOffset;
-
         uint64_t val = random.randomIntegerRange<uint64_t>(0, 32);
         _value = (T)val;
     }
@@ -284,7 +281,7 @@ public:
     enum {
         k_Type = HashOperatorTypeStateShrMagic
     };
-    HashOperatorStateShrMagic(size_t offset, uint64_t value) : _offset(offset), _value(T(value)) {}
+    HashOperatorStateShrMagic(size_t offset, uint64_t value) : _offset(offset), _value(T(value) / 4) {}
 
     virtual void run(HashContext_t& context) override
     {
@@ -295,9 +292,6 @@ public:
 
     virtual void mutatate(HashMakerParams& params, Random& random) override
     {
-        size_t newOffset = random.randomIntegerRange<size_t>(0, params.hashSize - sizeof(T) - 1);
-        _offset = newOffset;
-
         uint64_t val = random.randomIntegerRange<uint64_t>(0, 32);
         _value = (T)val;
     }
@@ -340,9 +334,6 @@ public:
 
     virtual void mutatate(HashMakerParams& params, Random& random) override
     {
-        size_t newOffset = random.randomIntegerRange<size_t>(0, params.hashSize - sizeof(T) - 1);
-        _offset = newOffset;
-
         uint64_t val = random.randomIntegerRange<uint64_t>(0, std::numeric_limits<T>::max());
         _value = (T)val;
     }
@@ -385,9 +376,6 @@ public:
 
     virtual void mutatate(HashMakerParams& params, Random& random) override
     {
-        size_t newOffset = random.randomIntegerRange<size_t>(0, params.hashSize - sizeof(T) - 1);
-        _offset = newOffset;
-
         uint64_t val = random.randomIntegerRange<uint64_t>(0, std::numeric_limits<T>::max());
         _value = (T)val;
     }
@@ -430,8 +418,6 @@ public:
 
     virtual void mutatate(HashMakerParams& params, Random& random) override
     {
-        size_t newOffset = random.randomIntegerRange<size_t>(0, params.hashSize - sizeof(T) - 1);
-        _offset = newOffset;
     }
 
     virtual bool isValid(HashContext_t& context)
@@ -472,8 +458,6 @@ public:
 
     virtual void mutatate(HashMakerParams& params, Random& random) override
     {
-        size_t newOffset = random.randomIntegerRange<size_t>(0, params.hashSize - sizeof(T) - 1);
-        _offset = newOffset;
     }
 
     virtual bool isValid(HashContext_t& context)
@@ -514,8 +498,6 @@ public:
 
     virtual void mutatate(HashMakerParams& params, Random& random) override
     {
-        size_t newOffset = random.randomIntegerRange<size_t>(0, params.hashSize - sizeof(T) - 1);
-        _offset = newOffset;
     }
 
     virtual bool isValid(HashContext_t& context)
@@ -556,8 +538,6 @@ public:
 
     virtual void mutatate(HashMakerParams& params, Random& random) override
     {
-        size_t newOffset = random.randomIntegerRange<size_t>(0, params.hashSize - sizeof(T) - 1);
-        _offset = newOffset;
     }
 
     virtual bool isValid(HashContext_t& context)
@@ -843,6 +823,11 @@ inline std::unique_ptr<IHashOperator> createOperator(Random& random, Args&&... a
     return op;
 }
 
+static size_t getRandomOffset(const HashMakerParams& params, Random& random)
+{
+    return random.randomIntegerRange(params.hashSize - 1);
+}
+
 std::unique_ptr<IHashOperator> CreateRandomOperator(const HashMakerParams& params, Random& random)
 {
     const std::vector<HashOperatorTypes>& operators = GetOperatorList();
@@ -854,135 +839,135 @@ std::unique_ptr<IHashOperator> CreateRandomOperator(const HashMakerParams& param
     {
     case HashOperatorTypeStateMovInput:
         {
-            size_t index = random.randomIntegerRange(params.hashSize - 1);
-            op = createOperator<HashOperatorStateMovInput>(random, index);
+            size_t offset = getRandomOffset(params, random);
+            op = createOperator<HashOperatorStateMovInput>(random, offset);
         }
         break;
     case HashOperatorTypeStateMovMagic:
         {
-            size_t index = random.randomIntegerRange(params.hashSize - 1);
+            size_t offset = getRandomOffset(params, random);
             uint64_t value = random.randomIntegerRange<uint64_t>(0x00, std::numeric_limits<uint64_t>::max());
-            op = createOperator<HashOperatorStateMovMagic>(random, index, value);
+            op = createOperator<HashOperatorStateMovMagic>(random, offset, value);
         }
         break;
     case HashOperatorTypeStateMulMagic:
         {
-            size_t index = random.randomIntegerRange(params.hashSize - 1);
+            size_t offset = getRandomOffset(params, random);
             uint64_t value = random.randomIntegerRange<uint64_t>(0x02, std::numeric_limits<uint64_t>::max());
-            op = createOperator<HashOperatorStateMulMagic>(random, index, value);
+            op = createOperator<HashOperatorStateMulMagic>(random, offset, value);
         }
         break;
     case HashOperatorTypeStateAndMagic:
         {
-            size_t index = random.randomIntegerRange(params.hashSize - 1);
+            size_t offset = getRandomOffset(params, random);
             uint64_t value = random.randomIntegerRange<uint64_t>(0x01, std::numeric_limits<uint64_t>::max());
-            op = createOperator<HashOperatorStateAndMagic>(random, index, value);
+            op = createOperator<HashOperatorStateAndMagic>(random, offset, value);
         }
         break;
     case HashOperatorTypeStateShlMagic:
         {
-            size_t index = random.randomIntegerRange(params.hashSize - 1);
-            uint8_t value = random.randomIntegerRange(0x01, 32);
-            op = createOperator<HashOperatorStateShlMagic>(random, index, value);
+            size_t offset = getRandomOffset(params, random);
+            uint8_t value = random.randomIntegerRange(4, 32);
+            op = createOperator<HashOperatorStateShlMagic>(random, offset, value);
         }
         break;
     case HashOperatorTypeStateShrMagic:
         {
-            size_t index = random.randomIntegerRange(params.hashSize - 1);
-            uint8_t value = random.randomIntegerRange(0x01, 32);
-            op = createOperator<HashOperatorStateShrMagic>(random, index, value);
+            size_t offset = getRandomOffset(params, random);
+            uint8_t value = random.randomIntegerRange(4, 32);
+            op = createOperator<HashOperatorStateShrMagic>(random, offset, value);
         }
         break;
     case HashOperatorTypeStateOrMagic:
         {
-            size_t index = random.randomIntegerRange(params.hashSize - 1);
-            uint8_t value = random.randomIntegerRange(0x01, 0xFF);
-            op = createOperator<HashOperatorStateOrMagic>(random, index, value);
+            size_t offset = getRandomOffset(params, random);
+            uint64_t value = random.randomIntegerRange<uint64_t>(0x01, std::numeric_limits<uint64_t>::max());
+            op = createOperator<HashOperatorStateOrMagic>(random, offset, value);
         }
         break;
     case HashOperatorTypeStateXorMagic:
         {
-            size_t index = random.randomIntegerRange(params.hashSize - 1);
-            uint8_t value = random.randomIntegerRange(0x00, 0xFF);
-            op = createOperator<HashOperatorStateXorMagic>(random, index, value);
+            size_t offset = getRandomOffset(params, random);
+            uint64_t value = random.randomIntegerRange<uint64_t>(0x00, std::numeric_limits<uint64_t>::max());
+            op = createOperator<HashOperatorStateXorMagic>(random, offset, value);
         }
         break;
     case HashOperatorTypeStateXorInput:
         {
-            size_t index = random.randomIntegerRange(params.hashSize - 1);
-            op = createOperator<HashOperatorStateXorInput>(random, index);
+            size_t offset = getRandomOffset(params, random);
+            op = createOperator<HashOperatorStateXorInput>(random, offset);
         }
         break;
     case HashOperatorTypeStateAndInput:
         {
-            size_t index = random.randomIntegerRange(params.hashSize - 1);
-            op = createOperator<HashOperatorStateAndInput>(random, index);
+            size_t offset = getRandomOffset(params, random);
+            op = createOperator<HashOperatorStateAndInput>(random, offset);
         }
         break;
     case HashOperatorTypeStateAddInput:
         {
-            size_t index = random.randomIntegerRange(params.hashSize - 1);
-            op = createOperator<HashOperatorStateAddInput>(random, index);
+            size_t offset = getRandomOffset(params, random);
+            op = createOperator<HashOperatorStateAddInput>(random, offset);
         }
         break;
     case HashOperatorTypeStateSubInput:
         {
-            size_t index = random.randomIntegerRange(params.hashSize - 1);
-            op = createOperator<HashOperatorStateSubInput>(random, index);
+            size_t offset = getRandomOffset(params, random);
+            op = createOperator<HashOperatorStateSubInput>(random, offset);
         }
         break;
     case HashOperatorTypeStateMovState:
         {
-            size_t index1;
-            size_t index2;
+            size_t offset1;
+            size_t offset2;
             do
             {
-                index1 = random.randomIntegerRange(params.hashSize - 1);
-                index2 = random.randomIntegerRange(params.hashSize - 1);
-            } while (index1 == index2);
-            op = createOperator<HashOperatorStateMovState>(random, index1, index2);
+                offset1 = getRandomOffset(params, random);
+                offset2 = getRandomOffset(params, random);
+            } while (offset1 == offset2);
+            op = createOperator<HashOperatorStateMovState>(random, offset1, offset2);
         }
         break;
     case HashOperatorTypeStateXorState:
         {
-            size_t index1;
-            size_t index2;
+            size_t offset1;
+            size_t offset2;
             do
             {
-                index1 = random.randomIntegerRange(params.hashSize - 1);
-                index2 = random.randomIntegerRange(params.hashSize - 1);
-            } while (index1 == index2);
-            op = createOperator<HashOperatorStateXorState>(random, index1, index2);
+                offset1 = getRandomOffset(params, random);
+                offset2 = getRandomOffset(params, random);
+            } while (offset1 == offset2);
+            op = createOperator<HashOperatorStateXorState>(random, offset1, offset2);
         }
         break;
     case HashOperatorTypeStateSubState:
         {
-            size_t index1;
-            size_t index2;
+            size_t offset1;
+            size_t offset2;
             do
             {
-                index1 = random.randomIntegerRange(params.hashSize - 1);
-                index2 = random.randomIntegerRange(params.hashSize - 1);
-            } while (index1 == index2);
-            op = createOperator<HashOperatorStateSubState>(random, index1, index2);
+                offset1 = getRandomOffset(params, random);
+                offset2 = getRandomOffset(params, random);
+            } while (offset1 == offset2);
+            op = createOperator<HashOperatorStateSubState>(random, offset1, offset2);
         }
         break;
     case HashOperatorTypeStateAddState:
         {
-            size_t index1;
-            size_t index2;
+            size_t offset1;
+            size_t offset2;
             do
             {
-                index1 = random.randomIntegerRange(params.hashSize - 1);
-                index2 = random.randomIntegerRange(params.hashSize - 1);
-            } while (index1 == index2);
-            op = createOperator<HashOperatorStateAddState>(random, index1, index2);
+                offset1 = getRandomOffset(params, random);
+                offset2 = getRandomOffset(params, random);
+            } while (offset1 == offset2);
+            op = createOperator<HashOperatorStateAddState>(random, offset1, offset2);
         }
         break;
     case HashOperatorTypeStateNot:
         {
-            size_t index = random.randomIntegerRange(params.hashSize - 1);
-            op = createOperator<HashOperatorStateNot>(random, index);
+            size_t offset = getRandomOffset(params, random);
+            op = createOperator<HashOperatorStateNot>(random, offset);
         }
         break;
     default:
@@ -995,10 +980,9 @@ std::unique_ptr<IHashOperator> CreateRandomOperator(const HashMakerParams& param
 
 void CreateOperators(const HashMakerParams& params, Genome_t& genome, Random& random)
 {
-    HashContext_t ctx;
-    ctx.data.resize(params.hashSize);
+    HashContext_t ctx(params.hashSize);
 
-    size_t count = random.randomIntegerRange(params.hashSize / 2, params.hashSize * 2);
+    size_t count = random.randomIntegerRange<size_t>(2, params.hashSize * 4);
     while(genome.operators.size() < count)
     {
         std::unique_ptr<IHashOperator> op = CreateRandomOperator(params, random);

@@ -10,6 +10,11 @@ struct HashContext_t
         k_DataFlagWrite = (1 << 2) 
     };
 
+    explicit HashContext_t(size_t hashSize)
+    {
+        reset(hashSize);
+    }
+
     std::vector<uint8_t> data;
     std::vector<uint8_t> dataFlags;
     uint8_t currentInput;

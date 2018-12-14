@@ -54,6 +54,7 @@ void HashMaker::evaluate()
         _bestSolution.fitness = best.fitness;
         _bestSolution.collisionRate = best.collisionRate;
         _bestSolution.stateUsage = best.stateUsage;
+        _bestSolution.totalCollisions = best.totalCollisions;
 
         _bestSolution.operators.clear();
         for (auto&& op : best.operators)
@@ -98,10 +99,13 @@ void HashMaker::printStats()
         solution += op->toString();
     }
 
-    printf("Generation: %zu ; Fitness: %.08f ; Collisions: %.08f ; State: %.08f; -> %s\n",
+    size_t collisions = (size_t)_bestSolution.totalCollisions;
+
+    printf("Generation: %zu ; Fitness: %.08f ; Collisions: %.08f (%zu) ; State: %.08f\n  -> %s\n",
         _generation, 
         _bestSolution.fitness,
         _bestSolution.collisionRate,
+        collisions,
         _bestSolution.stateUsage,
         solution.c_str());
 }
@@ -125,6 +129,8 @@ void HashMaker::epoch1()
         _population.emplace_back(std::move(child));
     }
 
+    size_t poolSize = _population.size() - 1;
+
     // Create children based 50% of the best new random ones.
     while(_population.size() < _parameters.populationSize)
     {
@@ -132,8 +138,8 @@ void HashMaker::epoch1()
         size_t index2;
         do 
         {
-            index1 = _random.randomIntegerRange<size_t>(0, half - 1);
-            index2 = _random.randomIntegerRange<size_t>(0, half - 1);
+            index1 = _random.randomIntegerRange<size_t>(0, poolSize);
+            index2 = _random.randomIntegerRange<size_t>(0, poolSize);
         } while (index1 == index2);
 
         Genome_t childA;
@@ -178,11 +184,10 @@ void HashMaker::mutate(Genome_t& genome)
         {
             genome.operators[i]->mutatate(_parameters, _random);
         }
-        else if (_random.randomChance(_parameters.operatorSwapChance))
+        else if (_random.randomChance(_parameters.operatorReplaceChance))
         {
             // Swap with new operator.
-            HashContext_t ctx = {};
-            ctx.data.resize(_parameters.hashSize);
+            HashContext_t ctx(_parameters.hashSize);
 
             std::unique_ptr<IHashOperator> op;
             do 
@@ -191,6 +196,16 @@ void HashMaker::mutate(Genome_t& genome)
             } while (op->isValid(ctx) == false);
 
             genome.operators[i] = std::move(op);
+        }
+        else if (_random.randomChance(_parameters.operatorSwapChance))
+        {
+            size_t otherIdx;
+            do 
+            {
+                otherIdx = _random.randomIndex(genome.operators);
+            } while (otherIdx == i);
+
+            std::swap(genome.operators[i], genome.operators[otherIdx]);
         }
     }
 }

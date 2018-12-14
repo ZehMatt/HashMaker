@@ -5,6 +5,7 @@
 #include "Operator.h"
 #include "TestData.h"
 
+#include <assert.h>
 #include <unordered_set>
 
 struct BufferHash
@@ -94,16 +95,14 @@ void Evaluation::evaluate(Genome_t& genome)
 
     // Check if operators have effect via input first.
     {
-        HashContext_t ctx1 = {};
-        ctx1.reset(_hashSize);
+        HashContext_t ctx1(_hashSize);
         ctx1.currentInput = 0x00;
         for (const auto& op : genome.operators)
         {
             op->run(ctx1);
         }
 
-        HashContext_t ctx2 = {};
-        ctx2.reset(_hashSize);
+        HashContext_t ctx2(_hashSize);
         ctx2.currentInput = 0xFF;
         for (const auto& op : genome.operators)
         {
@@ -117,7 +116,8 @@ void Evaluation::evaluate(Genome_t& genome)
     }
 
     // Compute hashes for all the test data and store the hash in the collection.
-    HashCollection uniqueHashes;
+    static thread_local HashCollection uniqueHashes;
+    uniqueHashes.clear();
 
     double collisions = 0.0;
     double operations = (double)genome.operators.size();
@@ -138,7 +138,7 @@ void Evaluation::evaluate(Genome_t& genome)
         const TestData::Data& data = testData[testDataSample];
         const std::vector<uint8_t>& buffer = data.bytes;
 
-        HashContext_t ctx = {};
+        HashContext_t ctx(_hashSize);
         ctx.reset(_hashSize);
 
         for (auto&& byte : buffer)
@@ -164,6 +164,8 @@ void Evaluation::evaluate(Genome_t& genome)
 
     //double fitnessOperations = (operations - (double)_parameters.minOperators) / (double)(_parameters.maxOperators - _parameters.minOperators);
     //fitnessOperations = (1.0 - fitnessOperations) * 0.2;
+    assert((unsigned int)collisions < testData.size());
+    assert((unsigned int)numTests == testData.size());
 
     double collisionRate = (collisions / numTests);
     double fitnessCollisions = 1.0 - collisionRate;
@@ -171,11 +173,13 @@ void Evaluation::evaluate(Genome_t& genome)
     double fitnessStateWrite = statesWritten / totalStates;
     double fitnessStateRead = statesRead / totalStates;
     double fitnessState = (fitnessStateWrite + fitnessStateRead) / 2.0;
+    //double fitnessState = fitnessStateWrite;
 
     double totalFitness = (fitnessCollisions + fitnessState);
 
     genome.fitness = std::pow(totalFitness, 4);
     genome.stateUsage = fitnessState;
     genome.collisionRate = collisionRate;
+    genome.totalCollisions = collisions;
 }
 
