@@ -10,7 +10,7 @@ HashMaker::HashMaker() : _evaluator(_parameters)
 void HashMaker::reset(const HashMakerParams& params)
 {
     _parameters = params;
-    _random.seed(params.seed);
+    _random.seed((unsigned int)params.seed);
     _generation = 0;
 
     _population.clear();
@@ -113,9 +113,10 @@ void HashMaker::epoch1()
         return a.fitness > b.fitness;
     });
 
-    size_t half = _population.size();
+    size_t half = _population.size() / 2;
     _population.resize(half);
 
+    // Include random new ones.
     for (size_t i = 0; i < (half / 4); i++)
     {
         Genome_t child;
@@ -124,6 +125,7 @@ void HashMaker::epoch1()
         _population.emplace_back(std::move(child));
     }
 
+    // Create children based 50% of the best new random ones.
     while(_population.size() < _parameters.populationSize)
     {
         size_t index1;
@@ -142,6 +144,9 @@ void HashMaker::epoch1()
 
         crossover(childA, parentA, parentB);
         crossover(childB, parentB, parentA);
+
+        mutate(childA);
+        mutate(childB);
 
         _population.emplace_back(std::move(childA));
         _population.emplace_back(std::move(childB));
@@ -162,5 +167,30 @@ void HashMaker::crossover(Genome_t& child, const Genome_t& parentA, const Genome
     for (; i < parentB.operators.size(); i++)
     {
         child.operators.emplace_back(parentB.operators[i]->clone());
+    }
+}
+
+void HashMaker::mutate(Genome_t& genome)
+{
+    for (size_t i = 0; i < genome.operators.size(); i++)
+    {
+        if (_random.randomChance(_parameters.mutationRate))
+        {
+            genome.operators[i]->mutatate(_parameters, _random);
+        }
+        else if (_random.randomChance(_parameters.operatorSwapChance))
+        {
+            // Swap with new operator.
+            HashContext_t ctx = {};
+            ctx.data.resize(_parameters.hashSize);
+
+            std::unique_ptr<IHashOperator> op;
+            do 
+            {
+                op = CreateRandomOperator(_parameters, _random);
+            } while (op->isValid(ctx) == false);
+
+            genome.operators[i] = std::move(op);
+        }
     }
 }

@@ -162,8 +162,8 @@ void Evaluation::evaluate(Genome_t& genome)
         totalStates += _hashSize;
     }
 
-    double fitnessOperations = (operations - (double)_parameters.minOperators) / (double)(_parameters.maxOperators - _parameters.minOperators);
-    fitnessOperations = (1.0 - fitnessOperations) * 0.2;
+    //double fitnessOperations = (operations - (double)_parameters.minOperators) / (double)(_parameters.maxOperators - _parameters.minOperators);
+    //fitnessOperations = (1.0 - fitnessOperations) * 0.2;
 
     double collisionRate = (collisions / numTests);
     double fitnessCollisions = 1.0 - collisionRate;
@@ -172,7 +172,7 @@ void Evaluation::evaluate(Genome_t& genome)
     double fitnessStateRead = statesRead / totalStates;
     double fitnessState = (fitnessStateWrite + fitnessStateRead) / 2.0;
 
-    double totalFitness = (fitnessOperations + fitnessCollisions + fitnessState);
+    double totalFitness = (fitnessCollisions + fitnessState);
 
     genome.fitness = std::pow(totalFitness, 4);
     genome.stateUsage = fitnessState;

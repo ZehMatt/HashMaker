@@ -31,7 +31,7 @@ int main(int argc, const char *argv[])
     printf("TestData: %zu entries\n", testData.size());
 
     HashMakerParams params;
-    params.hashSize = 16;
+    params.hashSize = 4;
 
     HashMaker maker;
     maker.reset(params);

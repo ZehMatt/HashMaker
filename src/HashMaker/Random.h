@@ -8,9 +8,9 @@ class Random
 
 public:
     Random() = default;
-    Random(size_t seed) : _prng(seed) {}
+    Random(std::mt19937::result_type seed) : _prng(seed) {}
 
-    void seed(size_t seed)
+    void seed(std::mt19937::result_type seed)
     {
         _prng.seed(seed);
     }

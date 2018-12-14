@@ -30,6 +30,7 @@ private:
     void epoch1();
 
     void crossover(Genome_t& child, const Genome_t& parentA, const Genome_t& parentB);
+    void mutate(Genome_t& genome);
 
 private:
     Random _random;
