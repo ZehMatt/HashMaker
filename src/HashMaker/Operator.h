@@ -10,6 +10,7 @@ class IHashOperator
 {
 public:
     virtual void run(HashContext_t& context) = 0;
+    virtual bool isValid(HashContext_t& context) = 0;
 
     virtual std::unique_ptr<IHashOperator> clone() = 0;
 

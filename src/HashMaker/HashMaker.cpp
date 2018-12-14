@@ -116,7 +116,15 @@ void HashMaker::epoch1()
     size_t half = _population.size();
     _population.resize(half);
 
-    for(size_t i = 0; i < (half / 4); i++)
+    for (size_t i = 0; i < (half / 4); i++)
+    {
+        Genome_t child;
+        initializeGenome(child);
+
+        _population.emplace_back(std::move(child));
+    }
+
+    while(_population.size() < _parameters.populationSize)
     {
         size_t index1;
         size_t index2;
@@ -139,13 +147,6 @@ void HashMaker::epoch1()
         _population.emplace_back(std::move(childB));
     }
 
-    while(_population.size() < _parameters.populationSize)
-    {
-        Genome_t child;
-        initializeGenome(child);
-
-        _population.emplace_back(std::move(child));
-    }
 }
 
 void HashMaker::crossover(Genome_t& child, const Genome_t& parentA, const Genome_t& parentB)

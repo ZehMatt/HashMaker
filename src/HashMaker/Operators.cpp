@@ -1,5 +1,6 @@
 #include "Operator.h"
 #include "Genome.h"
+#include <assert.h>
 
 enum HashOperatorTypes : size_t
 {
@@ -22,520 +23,672 @@ enum HashOperatorTypes : size_t
     HashOperatorTypeStateNot,
 };
 
-class HashOperatorStateMovInput : public IHashOperator
+class HashOperatorBase
 {
-    size_t _index;
+protected:
+    void markWritten(HashContext_t& context, size_t offset, size_t len)
+    {
+        for (size_t i = 0; i < len; i++)
+            context.dataFlags[offset + i] |= HashContext_t::k_DataFlagWrite;
+    }
+    void markRead(HashContext_t& context, size_t offset, size_t len)
+    {
+        for (size_t i = 0; i < len; i++)
+            context.dataFlags[offset + i] |= HashContext_t::k_DataFlagRead;
+    }
+
+    template<typename T>
+    void write(HashContext_t& context, size_t offset, T val)
+    {
+        *reinterpret_cast<T*>(context.data.data() + offset) = val;
+        markWritten(context, offset, sizeof(T));
+    }
+
+    template<typename T>
+    T read(HashContext_t& context, size_t offset)
+    {
+        markRead(context, offset, sizeof(T));
+        return *reinterpret_cast<T*>(context.data.data() + offset);
+    }
+
+    bool isOffsetValid(HashContext_t& context, size_t offset, size_t len)
+    {
+        return offset + len < context.data.size();
+    }
+};
+
+template<typename T>
+class HashOperatorStateMovInput : public IHashOperator, HashOperatorBase
+{
+    size_t _offset;
 public:
     enum {
         k_Type = HashOperatorTypeStateMovInput
     };
-    HashOperatorStateMovInput(size_t index) : _index(index) {}
+    HashOperatorStateMovInput(size_t offset) : _offset(offset) {}
 
     virtual void run(HashContext_t& context) override
     {
-        context.data[_index] = context.currentInput;
-        context.dataFlags[_index] |= HashContext_t::k_DataFlagWrite;
+        write<T>(context, _offset, context.currentInput);
+    }
+
+    virtual bool isValid(HashContext_t& context)
+    {
+        return isOffsetValid(context, _offset, sizeof(T));
     }
 
     virtual std::unique_ptr<IHashOperator> clone() override
     {
-        return std::make_unique<HashOperatorStateMovInput>(_index);
+        return std::make_unique<HashOperatorStateMovInput<T>>(_offset);
     }
 
     virtual std::string toString() override
     {
         char str[100] = {};
-        sprintf_s(str, "V[%zu] = IN", _index);
+        sprintf_s(str, "V[%zu] = IN", _offset);
         return str;
     }
 };
 
-class HashOperatorStateMovMagic : public IHashOperator
+template<typename T>
+class HashOperatorStateMovMagic : public IHashOperator, HashOperatorBase
 {
-    size_t _index;
-    uint8_t _value;
+    size_t _offset;
+    T _value;
 public:
     enum {
         k_Type = HashOperatorTypeStateMovMagic
     };
-    HashOperatorStateMovMagic(size_t index, uint8_t value) : _index(index), _value(value) {}
+    HashOperatorStateMovMagic(size_t offset, uint64_t value) : _offset(offset), _value(T(value)) {}
 
     virtual void run(HashContext_t& context) override
     {
-        context.data[_index] = _value;
-        context.dataFlags[_index] |= HashContext_t::k_DataFlagWrite;
+        write<T>(context, _offset, _value);
+    }
+
+    virtual bool isValid(HashContext_t& context)
+    {
+        return isOffsetValid(context, _offset, sizeof(T));
     }
 
     virtual std::unique_ptr<IHashOperator> clone() override
     {
-        return std::make_unique<HashOperatorStateMovMagic>(_index, _value);
+        return std::make_unique<HashOperatorStateMovMagic<T>>(_offset, _value);
     }
 
     virtual std::string toString() override
     {
         char str[100] = {};
-        sprintf_s(str, "V[%zu] *= %u", _index, _value);
+        sprintf_s(str, "V%zu[%zu] *= %llu", sizeof(T) * 8, _offset, (uint64_t)_value);
         return str;
     }
 };
 
-class HashOperatorStateMulMagic : public IHashOperator
+template<typename T>
+class HashOperatorStateMulMagic : public IHashOperator, HashOperatorBase
 {
-    size_t _index;
-    uint8_t _value;
+    size_t _offset;
+    T _value;
 public:
     enum {
         k_Type = HashOperatorTypeStateMulMagic
     };
-    HashOperatorStateMulMagic(size_t index, uint8_t value) : _index(index), _value(value) {}
+    HashOperatorStateMulMagic(size_t offset, uint64_t value) : _offset(offset), _value(T(value)) {}
 
     virtual void run(HashContext_t& context) override
     {
-        context.data[_index] *= _value;
-        context.dataFlags[_index] |= HashContext_t::k_DataFlagWrite;
+        T val = read<T>(context, _offset);
+        val *= _value;
+        write<T>(context, _offset, val);
+    }
+
+    virtual bool isValid(HashContext_t& context)
+    {
+        return isOffsetValid(context, _offset, sizeof(T));
     }
 
     virtual std::unique_ptr<IHashOperator> clone() override
     {
-        return std::make_unique<HashOperatorStateMulMagic>(_index, _value);
+        return std::make_unique<HashOperatorStateMulMagic<T>>(_offset, _value);
     }
 
     virtual std::string toString() override
     {
         char str[100] = {};
-        sprintf_s(str, "V[%zu] *= %u", _index, _value);
+        sprintf_s(str, "V%zu[%zu] *= %llu", sizeof(T) * 8, _offset, (uint64_t)_value);
         return str;
     }
 };
 
-class HashOperatorStateAndMagic : public IHashOperator
+template<typename T>
+class HashOperatorStateAndMagic : public IHashOperator, HashOperatorBase
 {
-    size_t _index;
-    uint8_t _value;
+    size_t _offset;
+    T _value;
 public:
     enum {
         k_Type = HashOperatorTypeStateAndMagic
     };
-    HashOperatorStateAndMagic(size_t index, uint8_t value) : _index(index), _value(value) {}
+    HashOperatorStateAndMagic(size_t offset, uint64_t value) : _offset(offset), _value(T(value)) {}
 
     virtual void run(HashContext_t& context) override
     {
-        context.data[_index] *= _value;
-        context.dataFlags[_index] |= HashContext_t::k_DataFlagWrite;
+        T val = read<T>(context, _offset);
+        val &= _value;
+        write<T>(context, _offset, val);
+    }
+
+    virtual bool isValid(HashContext_t& context)
+    {
+        return isOffsetValid(context, _offset, sizeof(T));
     }
 
     virtual std::unique_ptr<IHashOperator> clone() override
     {
-        return std::make_unique<HashOperatorStateAndMagic>(_index, _value);
+        return std::make_unique<HashOperatorStateAndMagic<T>>(_offset, _value);
     }
 
     virtual std::string toString() override
     {
         char str[100] = {};
-        sprintf_s(str, "V[%zu] &= %u", _index, _value);
+        sprintf_s(str, "V%zu[%zu] &= %llu", sizeof(T) * 8, _offset, (uint64_t)_value);
         return str;
     }
 };
 
-class HashOperatorStateShlMagic : public IHashOperator
+template<typename T>
+class HashOperatorStateShlMagic : public IHashOperator, HashOperatorBase
 {
-    size_t _index;
-    uint8_t _value;
+    size_t _offset;
+    T _value;
+
 public:
     enum {
         k_Type = HashOperatorTypeStateShlMagic
     };
-    HashOperatorStateShlMagic(size_t index, uint8_t value) : _index(index), _value(value) {}
+    HashOperatorStateShlMagic(size_t offset, uint64_t value) : _offset(offset), _value(T(value)) {}
 
     virtual void run(HashContext_t& context) override
     {
-        context.data[_index] *= _value;
-        context.dataFlags[_index] |= HashContext_t::k_DataFlagWrite;
+        T val = read<T>(context, _offset);
+        val <<= _value;
+        write<T>(context, _offset, val);
+    }
+
+    virtual bool isValid(HashContext_t& context)
+    {
+        return isOffsetValid(context, _offset, sizeof(T));
     }
 
     virtual std::unique_ptr<IHashOperator> clone() override
     {
-        return std::make_unique<HashOperatorStateShlMagic>(_index, _value);
+        return std::make_unique<HashOperatorStateShlMagic<T>>(_offset, _value);
     }
 
     virtual std::string toString() override
     {
         char str[100] = {};
-        sprintf_s(str, "V[%zu] <<= %u", _index, _value);
+        sprintf_s(str, "V%zu[%zu] <<= %llu", sizeof(T) * 8, _offset, (uint64_t)_value);
         return str;
     }
 };
 
-class HashOperatorStateShrMagic : public IHashOperator
+template<typename T>
+class HashOperatorStateShrMagic : public IHashOperator, HashOperatorBase
 {
-    size_t _index;
-    uint8_t _value;
+    size_t _offset;
+    T _value;
 public:
     enum {
         k_Type = HashOperatorTypeStateShrMagic
     };
-    HashOperatorStateShrMagic(size_t index, uint8_t value) : _index(index), _value(value) {}
+    HashOperatorStateShrMagic(size_t offset, uint64_t value) : _offset(offset), _value(T(value)) {}
 
     virtual void run(HashContext_t& context) override
     {
-        context.data[_index] *= _value;
-        context.dataFlags[_index] |= HashContext_t::k_DataFlagWrite;
+        T val = read<T>(context, _offset);
+        val >>= _value;
+        write<T>(context, _offset, val);
+    }
+
+    virtual bool isValid(HashContext_t& context)
+    {
+        return isOffsetValid(context, _offset, sizeof(T));
     }
 
     virtual std::unique_ptr<IHashOperator> clone() override
     {
-        return std::make_unique<HashOperatorStateShrMagic>(_index, _value);
+        return std::make_unique<HashOperatorStateShrMagic<T>>(_offset, _value);
     }
 
     virtual std::string toString() override
     {
         char str[100] = {};
-        sprintf_s(str, "V[%zu] >>= %u", _index, _value);
+        sprintf_s(str, "V%zu[%zu] >>= %llu", sizeof(T) * 8, _offset, (uint64_t)_value);
         return str;
     }
 };
 
-class HashOperatorStateOrMagic : public IHashOperator
+template<typename T>
+class HashOperatorStateOrMagic : public IHashOperator, HashOperatorBase
 {
-    size_t _index;
-    uint8_t _value;
+    size_t _offset;
+    T _value;
 public:
     enum {
         k_Type = HashOperatorTypeStateOrMagic
     };
-    HashOperatorStateOrMagic(size_t index, uint8_t value) : _index(index), _value(value) {}
+    HashOperatorStateOrMagic(size_t offset, uint64_t value) : _offset(offset), _value(T(value)) {}
 
     virtual void run(HashContext_t& context) override
     {
-        context.data[_index] *= _value;
-        context.dataFlags[_index] |= HashContext_t::k_DataFlagWrite;
+        T val = read<T>(context, _offset);
+        val |= _value;
+        write<T>(context, _offset, val);
+    }
+
+    virtual bool isValid(HashContext_t& context)
+    {
+        return isOffsetValid(context, _offset, sizeof(T));
     }
 
     virtual std::unique_ptr<IHashOperator> clone() override
     {
-        return std::make_unique<HashOperatorStateOrMagic>(_index, _value);
+        return std::make_unique<HashOperatorStateOrMagic<T>>(_offset, _value);
     }
 
     virtual std::string toString() override
     {
         char str[100] = {};
-        sprintf_s(str, "V[%zu] |= %u", _index, _value);
+        sprintf_s(str, "V%zu[%zu] |= %llu", sizeof(T) * 8, _offset, (uint64_t)_value);
         return str;
     }
 };
 
-class HashOperatorStateXorMagic : public IHashOperator
+template<typename T>
+class HashOperatorStateXorMagic : public IHashOperator, HashOperatorBase
 {
-    size_t _index;
-    uint8_t _value;
+    size_t _offset;
+    T _value;
 public:
     enum {
         k_Type = HashOperatorTypeStateXorMagic
     };
-    HashOperatorStateXorMagic(size_t index, uint8_t value) : _index(index), _value(value) {}
+    HashOperatorStateXorMagic(size_t offset, uint64_t value) : _offset(offset), _value(T(value)) {}
 
     virtual void run(HashContext_t& context) override
     {
-        context.data[_index] *= _value;
-        context.dataFlags[_index] |= HashContext_t::k_DataFlagWrite;
+        T val = read<T>(context, _offset);
+        val ^= _value;
+        write<T>(context, _offset, val);
+    }
+
+    virtual bool isValid(HashContext_t& context)
+    {
+        return isOffsetValid(context, _offset, sizeof(T));
     }
 
     virtual std::unique_ptr<IHashOperator> clone() override
     {
-        return std::make_unique<HashOperatorStateXorMagic>(_index, _value);
+        return std::make_unique<HashOperatorStateXorMagic<T>>(_offset, _value);
     }
 
     virtual std::string toString() override
     {
         char str[100] = {};
-        sprintf_s(str, "V[%zu] ^= %u", _index, _value);
+        sprintf_s(str, "V%zu[%zu] ^= %llu", sizeof(T) * 8, _offset, (uint64_t)_value);
         return str;
     }
 };
 
-class HashOperatorStateXorInput : public IHashOperator
+template<typename T>
+class HashOperatorStateXorInput : public IHashOperator, HashOperatorBase
 {
-    size_t _index;
+    size_t _offset;
 
 public:
     enum {
         k_Type = HashOperatorTypeStateXorInput
     };
-    HashOperatorStateXorInput(size_t index) : _index(index) {}
+    HashOperatorStateXorInput(size_t offset) : _offset(offset) {}
 
     virtual void run(HashContext_t& context) override
     {
-        context.data[_index] ^= context.currentInput;
-        context.dataFlags[_index] |= HashContext_t::k_DataFlagWrite;
+        T val = read<T>(context, _offset);
+        val ^= static_cast<T>(context.currentInput);
+        write<T>(context, _offset, val);
+    }
+
+    virtual bool isValid(HashContext_t& context)
+    {
+        return isOffsetValid(context, _offset, sizeof(T));
     }
 
     virtual std::unique_ptr<IHashOperator> clone() override
     {
-        return std::make_unique<HashOperatorStateXorInput>(_index);
+        return std::make_unique<HashOperatorStateXorInput<T>>(_offset);
     }
 
     virtual std::string toString() override
     {
         char str[100] = {};
-        sprintf_s(str, "V[%zu] ^= IN", _index);
+        sprintf_s(str, "V%zu[%zu] ^= IN", sizeof(T) * 8, _offset);
         return str;
     }
 };
 
-class HashOperatorStateAndInput : public IHashOperator
+template<typename T>
+class HashOperatorStateAndInput : public IHashOperator, HashOperatorBase
 {
-    size_t _index;
+    size_t _offset;
 
 public:
     enum {
         k_Type = HashOperatorTypeStateAndInput
     };
-    HashOperatorStateAndInput(size_t index) : _index(index) {}
+    HashOperatorStateAndInput(size_t offset) : _offset(offset) {}
 
     virtual void run(HashContext_t& context) override
     {
-        context.data[_index] ^= context.currentInput;
-        context.dataFlags[_index] |= HashContext_t::k_DataFlagWrite;
+        T val = read<T>(context, _offset);
+        val &= static_cast<T>(context.currentInput);
+        write<T>(context, _offset, val);
+    }
+
+    virtual bool isValid(HashContext_t& context)
+    {
+        return isOffsetValid(context, _offset, sizeof(T));
     }
 
     virtual std::unique_ptr<IHashOperator> clone() override
     {
-        return std::make_unique<HashOperatorStateAndInput>(_index);
+        return std::make_unique<HashOperatorStateAndInput>(_offset);
     }
 
     virtual std::string toString() override
     {
         char str[100] = {};
-        sprintf_s(str, "V[%zu] &= IN", _index);
+        sprintf_s(str, "V%zu[%zu] &= IN", sizeof(T) * 8, _offset);
         return str;
     }
 };
 
-class HashOperatorStateAddInput : public IHashOperator
+template<typename T>
+class HashOperatorStateAddInput : public IHashOperator, HashOperatorBase
 {
-    size_t _index;
+    size_t _offset;
 
 public:
     enum {
         k_Type = HashOperatorTypeStateAddInput
     };
-    HashOperatorStateAddInput(size_t index) : _index(index) {}
+    HashOperatorStateAddInput(size_t offset) : _offset(offset) {}
 
     virtual void run(HashContext_t& context) override
     {
-        context.data[_index] += context.currentInput;
-        context.dataFlags[_index] |= HashContext_t::k_DataFlagWrite;
+        T val = read<T>(context, _offset);
+        val += static_cast<T>(context.currentInput);
+        write<T>(context, _offset, val);
+    }
+
+    virtual bool isValid(HashContext_t& context)
+    {
+        return isOffsetValid(context, _offset, sizeof(T));
     }
 
     virtual std::unique_ptr<IHashOperator> clone() override
     {
-        return std::make_unique<HashOperatorStateAddInput>(_index);
+        return std::make_unique<HashOperatorStateAddInput<T>>(_offset);
     }
 
     virtual std::string toString() override
     {
         char str[100] = {};
-        sprintf_s(str, "V[%zu] += IN", _index);
+        sprintf_s(str, "V%zu[%zu] += IN", sizeof(T) * 8, _offset);
         return str;
     }
 };
 
-class HashOperatorStateSubInput : public IHashOperator
+template<typename T>
+class HashOperatorStateSubInput : public IHashOperator, HashOperatorBase
 {
-    size_t _index;
+    size_t _offset;
 
 public:
     enum {
         k_Type = HashOperatorTypeStateSubInput
     };
-    HashOperatorStateSubInput(size_t index) : _index(index) {}
+    HashOperatorStateSubInput(size_t offset) : _offset(offset) {}
 
     virtual void run(HashContext_t& context) override
     {
-        context.data[_index] -= context.currentInput;
-        context.dataFlags[_index] |= HashContext_t::k_DataFlagWrite;
+        T val = read<T>(context, _offset);
+        val -= static_cast<T>(context.currentInput);
+        write<T>(context, _offset, val);
+    }
+
+    virtual bool isValid(HashContext_t& context)
+    {
+        return isOffsetValid(context, _offset, sizeof(T));
     }
 
     virtual std::unique_ptr<IHashOperator> clone() override
     {
-        return std::make_unique<HashOperatorStateSubInput>(_index);
+        return std::make_unique<HashOperatorStateSubInput<T>>(_offset);
     }
 
     virtual std::string toString() override
     {
         char str[100] = {};
-        sprintf_s(str, "V[%zu] -= IN", _index);
+        sprintf_s(str, "V%zu[%zu] -= IN", sizeof(T) * 8, _offset);
         return str;
     }
 };
 
-class HashOperatorStateMovState : public IHashOperator
+template<typename T>
+class HashOperatorStateMovState : public IHashOperator, HashOperatorBase
 {
-    size_t _index1;
-    size_t _index2;
+    size_t _offset1;
+    size_t _offset2;
 public:
     enum {
         k_Type = HashOperatorTypeStateMovState,
     };
-    HashOperatorStateMovState(size_t index1, size_t index2) : _index1(index1), _index2(index2) {}
+    HashOperatorStateMovState(size_t offset1, size_t offset2) : _offset1(offset1), _offset2(offset2) {}
 
     virtual void run(HashContext_t& context) override
     {
-        context.data[_index1] = context.data[_index2];
-        context.dataFlags[_index1] |= HashContext_t::k_DataFlagWrite;
-        context.dataFlags[_index2] |= HashContext_t::k_DataFlagRead;
+        T val = read<T>(context, _offset2);
+        write<T>(context, _offset1, val);
+    }
+
+    virtual bool isValid(HashContext_t& context)
+    {
+        return isOffsetValid(context, _offset1, sizeof(T)) &&
+            isOffsetValid(context, _offset2, sizeof(T));
     }
 
     virtual std::unique_ptr<IHashOperator> clone() override
     {
-        return std::make_unique<HashOperatorStateMovState>(_index1, _index2);
+        return std::make_unique<HashOperatorStateMovState<T>>(_offset1, _offset2);
     }
 
     virtual std::string toString() override
     {
         char str[100] = {};
-        sprintf_s(str, "V[%zu] = V[%zu]", _index1, _index2);
+        sprintf_s(str, "V%zu[%zu] = V%zu[%zu]", sizeof(T) * 8, _offset1, sizeof(T) * 8, _offset2);
         return str;
     }
 };
 
-class HashOperatorStateXorState : public IHashOperator
+template<typename T>
+class HashOperatorStateXorState : public IHashOperator, HashOperatorBase
 {
-    size_t _index1;
-    size_t _index2;
+    size_t _offset1;
+    size_t _offset2;
 public:
     enum {
         k_Type = HashOperatorTypeStateXorState
     };
-    HashOperatorStateXorState(size_t index1, size_t index2) : _index1(index1), _index2(index2) {}
+    HashOperatorStateXorState(size_t offset1, size_t offset2) : _offset1(offset1), _offset2(offset2) {}
 
     virtual void run(HashContext_t& context) override
     {
-        context.data[_index1] ^= context.data[_index2];
-        context.dataFlags[_index1] |= HashContext_t::k_DataFlagWrite;
-        context.dataFlags[_index2] |= HashContext_t::k_DataFlagRead;
+        T val1 = read<T>(context, _offset1);
+        T val2 = read<T>(context, _offset2);
+        val1 ^= val2;
+        write<T>(context, _offset1, val1);
+    }
+
+    virtual bool isValid(HashContext_t& context)
+    {
+        return isOffsetValid(context, _offset1, sizeof(T)) &&
+            isOffsetValid(context, _offset2, sizeof(T));
     }
 
     virtual std::unique_ptr<IHashOperator> clone() override
     {
-        return std::make_unique<HashOperatorStateXorState>(_index1, _index2);
+        return std::make_unique<HashOperatorStateXorState<T>>(_offset1, _offset2);
     }
 
     virtual std::string toString() override
     {
         char str[100] = {};
-        sprintf_s(str, "V[%zu] ^= V[%zu]", _index1, _index2);
+        sprintf_s(str, "V%zu[%zu] ^= V%zu[%zu]", sizeof(T) * 8, _offset1, sizeof(T) * 8, _offset2);
         return str;
     }
 };
 
-class HashOperatorStateSubState : public IHashOperator
+template<typename T>
+class HashOperatorStateSubState : public IHashOperator, HashOperatorBase
 {
-    size_t _index1;
-    size_t _index2;
+    size_t _offset1;
+    size_t _offset2;
 public:
     enum {
         k_Type = HashOperatorTypeStateSubState
     };
-    HashOperatorStateSubState(size_t index1, size_t index2) : _index1(index1), _index2(index2) {}
+    HashOperatorStateSubState(size_t offset1, size_t offset2) : _offset1(offset1), _offset2(offset2) {}
 
     virtual void run(HashContext_t& context) override
     {
-        context.data[_index1] -= context.data[_index2];
-        context.dataFlags[_index1] |= HashContext_t::k_DataFlagWrite;
-        context.dataFlags[_index2] |= HashContext_t::k_DataFlagRead;
+        T val1 = read<T>(context, _offset1);
+        T val2 = read<T>(context, _offset2);
+        val1 -= val2;
+        write<T>(context, _offset1, val1);
+    }
+
+    virtual bool isValid(HashContext_t& context)
+    {
+        return isOffsetValid(context, _offset1, sizeof(T)) &&
+            isOffsetValid(context, _offset2, sizeof(T));
     }
 
     virtual std::unique_ptr<IHashOperator> clone() override
     {
-        return std::make_unique<HashOperatorStateSubState>(_index1, _index2);
+        return std::make_unique<HashOperatorStateSubState<T>>(_offset1, _offset2);
     }
 
     virtual std::string toString() override
     {
         char str[100] = {};
-        sprintf_s(str, "V[%zu] -= V[%zu]", _index1, _index2);
+        sprintf_s(str, "V%zu[%zu] -= V%zu[%zu]", sizeof(T) * 8, _offset1, sizeof(T) * 8, _offset2);
         return str;
     }
 };
 
-class HashOperatorStateAddState : public IHashOperator
+template<typename T>
+class HashOperatorStateAddState : public IHashOperator, HashOperatorBase
 {
-    size_t _index1;
-    size_t _index2;
+    size_t _offset1;
+    size_t _offset2;
 public:
     enum {
         k_Type = HashOperatorTypeStateAddState
     };
-    HashOperatorStateAddState(size_t index1, size_t index2) : _index1(index1), _index2(index2) {}
+    HashOperatorStateAddState(size_t offset1, size_t offset2) : _offset1(offset1), _offset2(offset2) {}
 
     virtual void run(HashContext_t& context) override
     {
-        context.data[_index1] += context.data[_index2];
-        context.dataFlags[_index1] |= HashContext_t::k_DataFlagWrite;
-        context.dataFlags[_index2] |= HashContext_t::k_DataFlagRead;
+        T val1 = read<T>(context, _offset1);
+        T val2 = read<T>(context, _offset2);
+        val1 += val2;
+        write<T>(context, _offset1, val1);
+    }
+
+    virtual bool isValid(HashContext_t& context)
+    {
+        return isOffsetValid(context, _offset1, sizeof(T)) &&
+            isOffsetValid(context, _offset2, sizeof(T));
     }
 
     virtual std::unique_ptr<IHashOperator> clone() override
     {
-        return std::make_unique<HashOperatorStateAddState>(_index1, _index2);
+        return std::make_unique<HashOperatorStateAddState<T>>(_offset1, _offset2);
     }
 
     virtual std::string toString() override
     {
         char str[100] = {};
-        sprintf_s(str, "V[%zu] += V[%zu]", _index1, _index2);
+        sprintf_s(str, "V%zu[%zu] += V%zu[%zu]", sizeof(T) * 8, _offset1, sizeof(T) * 8, _offset2);
         return str;
     }
 };
 
-class HashOperatorStateNot : public IHashOperator
+template<typename T>
+class HashOperatorStateNot : public IHashOperator, HashOperatorBase
 {
-    size_t _index;
+    size_t _offset;
 public:
     enum {
         k_Type = HashOperatorTypeStateNot
     };
-    HashOperatorStateNot(size_t index) : _index(index) {}
+    HashOperatorStateNot(size_t offset) : _offset(offset) {}
 
     virtual void run(HashContext_t& context) override
     {
-        context.data[_index] = ~context.data[_index];
-        context.dataFlags[_index] |= HashContext_t::k_DataFlagWrite | HashContext_t::k_DataFlagRead;
+        T val= read<T>(context, _offset);
+        val = ~val;
+        write<T>(context, _offset, val);
+    }
+
+    virtual bool isValid(HashContext_t& context)
+    {
+        return isOffsetValid(context, _offset, sizeof(T));
     }
 
     virtual std::unique_ptr<IHashOperator> clone() override
     {
-        return std::make_unique<HashOperatorStateNot>(_index);
+        return std::make_unique<HashOperatorStateNot<T>>(_offset);
     }
 
     virtual std::string toString() override
     {
         char str[100] = {};
-        sprintf_s(str, "V[%zu] = ~V[%zu]", _index, _index);
+        sprintf_s(str, "V%zu[%zu] = ~V%zu[%zu]", sizeof(T) * 8, _offset, sizeof(T) * 8, _offset);
         return str;
     }
 };
 
 constexpr std::pair<size_t, double> k_Operators[] = 
 {
-    { HashOperatorStateMovInput::k_Type, 1.0 },
-    { HashOperatorStateMovMagic::k_Type, 1.0 },
-    { HashOperatorStateMulMagic::k_Type, 1.0 },
-    { HashOperatorStateAndMagic::k_Type, 1.0 },
-    { HashOperatorStateShlMagic::k_Type, 1.0 },
-    { HashOperatorStateShrMagic::k_Type, 1.0 },
-    { HashOperatorStateOrMagic::k_Type, 1.0 },
-    { HashOperatorStateXorMagic::k_Type, 1.0 },
-    { HashOperatorStateXorInput::k_Type, 1.0 },
-    { HashOperatorStateAndInput::k_Type, 1.0 },
-    { HashOperatorStateAddInput::k_Type, 1.0 },
-    { HashOperatorStateSubInput::k_Type, 1.0 },
-    { HashOperatorStateMovState::k_Type, 1.0 },
-    { HashOperatorStateXorState::k_Type, 1.0 },
-    { HashOperatorStateSubState::k_Type, 1.0 },
-    { HashOperatorStateAddState::k_Type, 1.0 },
-    { HashOperatorStateNot::k_Type, 1.0 },
+    { HashOperatorTypeStateMovInput, 1.0 },
+    { HashOperatorTypeStateMovMagic, 1.0 },
+    { HashOperatorTypeStateMulMagic, 1.0 },
+    { HashOperatorTypeStateAndMagic, 1.0 },
+    { HashOperatorTypeStateShlMagic, 1.0 },
+    { HashOperatorTypeStateShrMagic, 1.0 },
+    { HashOperatorTypeStateOrMagic, 1.0 },
+    { HashOperatorTypeStateXorMagic, 1.0 },
+    { HashOperatorTypeStateXorInput, 1.0 },
+    { HashOperatorTypeStateAndInput, 1.0 },
+    { HashOperatorTypeStateAddInput, 1.0 },
+    { HashOperatorTypeStateSubInput, 1.0 },
+    { HashOperatorTypeStateMovState, 1.0 },
+    { HashOperatorTypeStateXorState, 1.0 },
+    { HashOperatorTypeStateSubState, 1.0 },
+    { HashOperatorTypeStateAddState, 1.0 },
+    { HashOperatorTypeStateNot, 1.0 },
 };
 
 static std::vector<HashOperatorTypes>& GetOperatorList()
@@ -555,98 +708,123 @@ static std::vector<HashOperatorTypes>& GetOperatorList()
     return res;
 }
 
+template<template<typename> class C, typename... Args>
+inline std::unique_ptr<IHashOperator> createOperator(Random& random, Args&&... args)
+{
+    std::unique_ptr<IHashOperator> op;
+
+    switch (random.randomIntegerRange(0, 3))
+    {
+    case 0:
+        return std::make_unique<C<uint8_t>>(std::forward<Args>(args)...);
+    case 1:
+        return std::make_unique<C<uint16_t>>(std::forward<Args>(args)...);
+    case 2:
+        return std::make_unique<C<uint32_t>>(std::forward<Args>(args)...);
+    case 3:
+        return std::make_unique<C<uint64_t>>(std::forward<Args>(args)...);
+    default:
+        assert(false);
+    }
+
+    return op;
+}
+
 void CreateOperators(const HashMakerParams& params, Genome_t& genome, Random& random)
 {
     const std::vector<HashOperatorTypes>& operators = GetOperatorList();
 
+    HashContext_t ctx;
+    ctx.data.resize(params.hashSize);
+
     size_t count = random.randomIntegerRange(params.minOperators, params.maxOperators);
-    for (size_t i = 0; i < count; i++)
+    while(genome.operators.size() < count)
     {
         std::unique_ptr<IHashOperator> op;
 
         const HashOperatorTypes& opType = random.randomElement(operators);
         switch (opType)
         {
-        case HashOperatorStateMovInput::k_Type:
+        case HashOperatorTypeStateMovInput:
             {
                 size_t index = random.randomIntegerRange(params.hashSize - 1);
-                op = std::make_unique<HashOperatorStateMovInput>(index);
+                op = createOperator<HashOperatorStateMovInput>(random, index);
             }
             break;
-        case HashOperatorStateMovMagic::k_Type:
+        case HashOperatorTypeStateMovMagic:
+            {
+                size_t index = random.randomIntegerRange(params.hashSize - 1);
+                uint64_t value = random.randomIntegerRange<uint64_t>(0x00, 0xFFFFFFFFFFFFFFFF);
+                op = createOperator<HashOperatorStateMovMagic>(random, index, value);
+            }
+            break;
+        case HashOperatorTypeStateMulMagic:
+            {
+                size_t index = random.randomIntegerRange(params.hashSize - 1);
+                uint64_t value = random.randomIntegerRange<uint64_t>(0x02, 0xFFFFFFFFFFFFFFFF);
+                op = createOperator<HashOperatorStateMulMagic>(random, index, value);
+            }
+            break;
+        case HashOperatorTypeStateAndMagic:
+            {
+                size_t index = random.randomIntegerRange(params.hashSize - 1);
+                uint64_t value = random.randomIntegerRange<uint64_t>(0x01, 0xFFFFFFFFFFFFFFFF);
+                op = createOperator<HashOperatorStateAndMagic>(random, index, value);
+            }
+            break;
+        case HashOperatorTypeStateShlMagic:
+            {
+                size_t index = random.randomIntegerRange(params.hashSize - 1);
+                uint8_t value = random.randomIntegerRange(0x01, 32);
+                op = createOperator<HashOperatorStateShlMagic>(random, index, value);
+            }
+            break;
+        case HashOperatorTypeStateShrMagic:
+            {
+                size_t index = random.randomIntegerRange(params.hashSize - 1);
+                uint8_t value = random.randomIntegerRange(0x01, 32);
+                op = createOperator<HashOperatorStateShrMagic>(random, index, value);
+            }
+            break;
+        case HashOperatorTypeStateOrMagic:
+            {
+                size_t index = random.randomIntegerRange(params.hashSize - 1);
+                uint8_t value = random.randomIntegerRange(0x01, 0xFF);
+                op = createOperator<HashOperatorStateOrMagic>(random, index, value);
+            }
+            break;
+        case HashOperatorTypeStateXorMagic:
             {
                 size_t index = random.randomIntegerRange(params.hashSize - 1);
                 uint8_t value = random.randomIntegerRange(0x00, 0xFF);
-                op = std::make_unique<HashOperatorStateMovMagic>(index, value);
+                op = createOperator<HashOperatorStateXorMagic>(random, index, value);
             }
             break;
-        case HashOperatorStateMulMagic::k_Type:
+        case HashOperatorTypeStateXorInput:
             {
                 size_t index = random.randomIntegerRange(params.hashSize - 1);
-                uint8_t value = random.randomIntegerRange(0x00, 0xFF);
-                op = std::make_unique<HashOperatorStateMulMagic>(index, value);
+                op = createOperator<HashOperatorStateXorInput>(random, index);
             }
             break;
-        case HashOperatorStateAndMagic::k_Type:
+        case HashOperatorTypeStateAndInput:
             {
                 size_t index = random.randomIntegerRange(params.hashSize - 1);
-                uint8_t value = random.randomIntegerRange(0x00, 0xFF);
-                op = std::make_unique<HashOperatorStateAndMagic>(index, value);
+                op = createOperator<HashOperatorStateAndInput>(random, index);
             }
             break;
-        case HashOperatorStateShlMagic::k_Type:
+        case HashOperatorTypeStateAddInput:
             {
                 size_t index = random.randomIntegerRange(params.hashSize - 1);
-                uint8_t value = random.randomIntegerRange(0x01, 0x04);
-                op = std::make_unique<HashOperatorStateShlMagic>(index, value);
+                op = createOperator<HashOperatorStateAddInput>(random, index);
             }
             break;
-        case HashOperatorStateShrMagic::k_Type:
+        case HashOperatorTypeStateSubInput:
             {
                 size_t index = random.randomIntegerRange(params.hashSize - 1);
-                uint8_t value = random.randomIntegerRange(0x01, 0x04);
-                op = std::make_unique<HashOperatorStateShrMagic>(index, value);
+                op = createOperator<HashOperatorStateSubInput>(random, index);
             }
             break;
-        case HashOperatorStateOrMagic::k_Type:
-            {
-                size_t index = random.randomIntegerRange(params.hashSize - 1);
-                uint8_t value = random.randomIntegerRange(0x00, 0xFF);
-                op = std::make_unique<HashOperatorStateOrMagic>(index, value);
-            }
-            break;
-        case HashOperatorStateXorMagic::k_Type:
-            {
-                size_t index = random.randomIntegerRange(params.hashSize - 1);
-                uint8_t value = random.randomIntegerRange(0x00, 0xFF);
-                op = std::make_unique<HashOperatorStateXorMagic>(index, value);
-            }
-            break;
-        case HashOperatorStateXorInput::k_Type:
-            {
-                size_t index = random.randomIntegerRange(params.hashSize - 1);
-                op = std::make_unique<HashOperatorStateXorInput>(index);
-            }
-            break;
-        case HashOperatorStateAndInput::k_Type:
-            {
-                size_t index = random.randomIntegerRange(params.hashSize - 1);
-                op = std::make_unique<HashOperatorStateAndInput>(index);
-            }
-            break;
-        case HashOperatorStateAddInput::k_Type:
-            {
-                size_t index = random.randomIntegerRange(params.hashSize - 1);
-                op = std::make_unique<HashOperatorStateAddInput>(index);
-            }
-            break;
-        case HashOperatorStateSubInput::k_Type:
-            {
-                size_t index = random.randomIntegerRange(params.hashSize - 1);
-                op = std::make_unique<HashOperatorStateSubInput>(index);
-            }
-            break;
-        case HashOperatorStateMovState::k_Type:
+        case HashOperatorTypeStateMovState:
             {
                 size_t index1;
                 size_t index2;
@@ -655,10 +833,10 @@ void CreateOperators(const HashMakerParams& params, Genome_t& genome, Random& ra
                     index1 = random.randomIntegerRange(params.hashSize - 1);
                     index2 = random.randomIntegerRange(params.hashSize - 1);
                 } while (index1 == index2);
-                op = std::make_unique<HashOperatorStateMovState>(index1, index2);
+                op = createOperator<HashOperatorStateMovState>(random, index1, index2);
             }
             break;
-        case HashOperatorStateXorState::k_Type:
+        case HashOperatorTypeStateXorState:
             {
                 size_t index1;
                 size_t index2;
@@ -667,10 +845,10 @@ void CreateOperators(const HashMakerParams& params, Genome_t& genome, Random& ra
                     index1 = random.randomIntegerRange(params.hashSize - 1);
                     index2 = random.randomIntegerRange(params.hashSize - 1);
                 } while (index1 == index2);
-                op = std::make_unique<HashOperatorStateXorState>(index1, index2);
+                op = createOperator<HashOperatorStateXorState>(random, index1, index2);
             }
             break;
-        case HashOperatorStateSubState::k_Type:
+        case HashOperatorTypeStateSubState:
             {
                 size_t index1;
                 size_t index2;
@@ -679,10 +857,10 @@ void CreateOperators(const HashMakerParams& params, Genome_t& genome, Random& ra
                     index1 = random.randomIntegerRange(params.hashSize - 1);
                     index2 = random.randomIntegerRange(params.hashSize - 1);
                 } while (index1 == index2);
-                op = std::make_unique<HashOperatorStateSubState>(index1, index2);
+                op = createOperator<HashOperatorStateSubState>(random, index1, index2);
             }
             break;
-        case HashOperatorStateAddState::k_Type:
+        case HashOperatorTypeStateAddState:
             {
                 size_t index1;
                 size_t index2;
@@ -691,16 +869,23 @@ void CreateOperators(const HashMakerParams& params, Genome_t& genome, Random& ra
                     index1 = random.randomIntegerRange(params.hashSize - 1);
                     index2 = random.randomIntegerRange(params.hashSize - 1);
                 } while (index1 == index2);
-                op = std::make_unique<HashOperatorStateAddState>(index1, index2);
+                op = createOperator<HashOperatorStateAddState>(random, index1, index2);
             }
             break;
-        case HashOperatorStateNot::k_Type:
+        case HashOperatorTypeStateNot:
             {
                 size_t index = random.randomIntegerRange(params.hashSize - 1);
-                op = std::make_unique<HashOperatorStateNot>(index);
+                op = createOperator<HashOperatorStateNot>(random, index);
             }
             break;
+        default:
+            assert(false);
+            break;
         }
+
+        // Only allow valid operators.
+        if(op->isValid(ctx) == false)
+            continue;
 
         genome.operators.emplace_back(std::move(op));
     }

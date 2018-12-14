@@ -3,6 +3,7 @@
 #include "Params.h"
 #include "HashContext.h"
 #include "Operator.h"
+#include "TestData.h"
 
 #include <unordered_set>
 
@@ -87,8 +88,6 @@ void Evaluation::reset()
 
 void Evaluation::evaluate(Genome_t& genome)
 {
-    const std::vector<Buffer>& testData = _testData;
-
     genome.fitness = 0.0;
     genome.collisionRate = 0.0;
     genome.stateUsage = 0.0;
@@ -119,31 +118,27 @@ void Evaluation::evaluate(Genome_t& genome)
 
     // Compute hashes for all the test data and store the hash in the collection.
     HashCollection uniqueHashes;
-    uniqueHashes.reserve(testData.size());
 
     double collisions = 0.0;
     double operations = (double)genome.operators.size();
 
-    size_t k_MaxIterations = 10'000'000;
-    size_t dataSize = 4;
-
-    DataGenerator gen;
-    gen.resize(dataSize);
+    size_t k_MaxIterations = 1'000'000;
 
     double numTests = 0.0;
     double statesWritten = 0.0;
     double statesRead = 0.0;
     double totalStates = 0.0;
 
-    HashContext_t ctx = {};
+    const TestData& testData = TestData::get();
 
-    for(size_t iter = 0; iter < k_MaxIterations; iter++)
+    for(size_t testDataSample = 0; testDataSample < testData.size(); testDataSample++)
     {
-        const std::vector<uint8_t>& buffer = gen.next();
-        if(buffer.size() > dataSize)
-            break;
-
         numTests++;
+
+        const TestData::Data& data = testData[testDataSample];
+        const std::vector<uint8_t>& buffer = data.bytes;
+
+        HashContext_t ctx = {};
         ctx.reset(_hashSize);
 
         for (auto&& byte : buffer)
@@ -168,7 +163,7 @@ void Evaluation::evaluate(Genome_t& genome)
     }
 
     double fitnessOperations = (operations - (double)_parameters.minOperators) / (double)(_parameters.maxOperators - _parameters.minOperators);
-    fitnessOperations = 1.0 - fitnessOperations;
+    fitnessOperations = (1.0 - fitnessOperations) * 0.2;
 
     double collisionRate = (collisions / numTests);
     double fitnessCollisions = 1.0 - collisionRate;

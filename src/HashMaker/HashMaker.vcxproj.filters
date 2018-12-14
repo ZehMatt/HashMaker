@@ -5,6 +5,7 @@
     <ClCompile Include="HashMaker.cpp" />
     <ClCompile Include="Operators.cpp" />
     <ClCompile Include="Evaluation.cpp" />
+    <ClCompile Include="TestData.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="HashMaker.h" />
@@ -14,5 +15,6 @@
     <ClInclude Include="Random.h" />
     <ClInclude Include="Params.h" />
     <ClInclude Include="Evaluation.h" />
+    <ClInclude Include="TestData.h" />
   </ItemGroup>
 </Project>

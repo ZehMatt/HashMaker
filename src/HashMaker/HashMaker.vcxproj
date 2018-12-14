@@ -166,6 +166,7 @@
     <ClCompile Include="HashMaker.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Operators.cpp" />
+    <ClCompile Include="TestData.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Evaluation.h" />
@@ -175,6 +176,7 @@
     <ClInclude Include="Operator.h" />
     <ClInclude Include="Params.h" />
     <ClInclude Include="Random.h" />
+    <ClInclude Include="TestData.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
