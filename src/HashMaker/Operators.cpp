@@ -76,7 +76,7 @@ public:
         write<T>(context, _offset, context.currentInput);
     }
 
-    virtual void mutatate(HashMakerParams& params, Random& random) override
+    virtual void mutate(HashMakerParams& params, Random& random) override
     {
         //size_t newOffset = random.randomIntegerRange<size_t>(0, params.hashSize - sizeof(T) - 1);
         //_offset = newOffset;
@@ -132,7 +132,7 @@ public:
         write<T>(context, _offset, _value);
     }
 
-    virtual void mutatate(HashMakerParams& params, Random& random) override
+    virtual void mutate(HashMakerParams& params, Random& random) override
     {
         //size_t newOffset = random.randomIntegerRange<size_t>(0, params.hashSize - sizeof(T) - 1);
         //_offset = newOffset;
@@ -191,7 +191,7 @@ public:
         write<T>(context, _offset, _value);
     }
 
-    virtual void mutatate(HashMakerParams& params, Random& random) override
+    virtual void mutate(HashMakerParams& params, Random& random) override
     {
         uint64_t val = random.randomIntegerRange<uint64_t>(0, std::numeric_limits<T>::max());
         _value = (T)val;
@@ -231,7 +231,7 @@ public:
         write<T>(context, _offset, _value);
     }
 
-    virtual void mutatate(HashMakerParams& params, Random& random) override
+    virtual void mutate(HashMakerParams& params, Random& random) override
     {
         //size_t newOffset = random.randomIntegerRange<size_t>(0, params.hashSize - sizeof(T) - 1);
         //_offset = newOffset;
@@ -276,7 +276,7 @@ public:
         write<T>(context, _offset, val);
     }
 
-    virtual void mutatate(HashMakerParams& params, Random& random) override
+    virtual void mutate(HashMakerParams& params, Random& random) override
     {
         //size_t newOffset = random.randomIntegerRange<size_t>(0, params.hashSize - sizeof(T) - 1);
         //_offset = newOffset;
@@ -321,7 +321,7 @@ public:
         write<T>(context, _offset, val);
     }
 
-    virtual void mutatate(HashMakerParams& params, Random& random) override
+    virtual void mutate(HashMakerParams& params, Random& random) override
     {
         //size_t newOffset = random.randomIntegerRange<size_t>(0, params.hashSize - sizeof(T) - 1);
         //_offset = newOffset;
@@ -367,7 +367,7 @@ public:
         write<T>(context, _offset, val);
     }
 
-    virtual void mutatate(HashMakerParams& params, Random& random) override
+    virtual void mutate(HashMakerParams& params, Random& random) override
     {
         uint64_t val = random.randomIntegerRange<uint64_t>(0, 32);
         _value = (T)val;
@@ -409,7 +409,7 @@ public:
         write<T>(context, _offset, val);
     }
 
-    virtual void mutatate(HashMakerParams& params, Random& random) override
+    virtual void mutate(HashMakerParams& params, Random& random) override
     {
         uint64_t val = random.randomIntegerRange<uint64_t>(0, 32);
         _value = (T)val;
@@ -451,7 +451,7 @@ public:
         write<T>(context, _offset, val);
     }
 
-    virtual void mutatate(HashMakerParams& params, Random& random) override
+    virtual void mutate(HashMakerParams& params, Random& random) override
     {
         uint64_t val = random.randomIntegerRange<uint64_t>(0, std::numeric_limits<T>::max());
         _value = (T)val;
@@ -493,7 +493,7 @@ public:
         write<T>(context, _offset, val);
     }
 
-    virtual void mutatate(HashMakerParams& params, Random& random) override
+    virtual void mutate(HashMakerParams& params, Random& random) override
     {
         uint64_t val = random.randomIntegerRange<uint64_t>(0, std::numeric_limits<T>::max());
         _value = (T)val;
@@ -535,7 +535,7 @@ public:
         write<T>(context, _offset, val);
     }
 
-    virtual void mutatate(HashMakerParams& params, Random& random) override
+    virtual void mutate(HashMakerParams& params, Random& random) override
     {
     }
 
@@ -575,7 +575,7 @@ public:
         write<T>(context, _offset, val);
     }
 
-    virtual void mutatate(HashMakerParams& params, Random& random) override
+    virtual void mutate(HashMakerParams& params, Random& random) override
     {
     }
 
@@ -615,7 +615,7 @@ public:
         write<T>(context, _offset, val);
     }
 
-    virtual void mutatate(HashMakerParams& params, Random& random) override
+    virtual void mutate(HashMakerParams& params, Random& random) override
     {
     }
 
@@ -655,7 +655,7 @@ public:
         write<T>(context, _offset, val);
     }
 
-    virtual void mutatate(HashMakerParams& params, Random& random) override
+    virtual void mutate(HashMakerParams& params, Random& random) override
     {
     }
 
@@ -694,7 +694,7 @@ public:
         write<T>(context, _offset1, val);
     }
 
-    virtual void mutatate(HashMakerParams& params, Random& random) override
+    virtual void mutate(HashMakerParams& params, Random& random) override
     {
     }
 
@@ -736,7 +736,7 @@ public:
         write<T>(context, _offset1, val1);
     }
 
-    virtual void mutatate(HashMakerParams& params, Random& random) override
+    virtual void mutate(HashMakerParams& params, Random& random) override
     {
     }
 
@@ -778,7 +778,7 @@ public:
         write<T>(context, _offset1, val1);
     }
 
-    virtual void mutatate(HashMakerParams& params, Random& random) override
+    virtual void mutate(HashMakerParams& params, Random& random) override
     {
     }
 
@@ -820,7 +820,7 @@ public:
         write<T>(context, _offset1, val1);
     }
 
-    virtual void mutatate(HashMakerParams& params, Random& random) override
+    virtual void mutate(HashMakerParams& params, Random& random) override
     {
     }
 
@@ -860,7 +860,7 @@ public:
         write<T>(context, _offset, val);
     }
 
-    virtual void mutatate(HashMakerParams& params, Random& random) override
+    virtual void mutate(HashMakerParams& params, Random& random) override
     {
     }
 

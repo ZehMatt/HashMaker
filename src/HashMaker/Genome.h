@@ -8,6 +8,7 @@ class IHashOperator;
 struct Genome_t
 {
     std::vector<std::unique_ptr<IHashOperator>> operators;
+    size_t genomeSizeBytes;
     double fitness = 0.0;
 
     // Statistics.

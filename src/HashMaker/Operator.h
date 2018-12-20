@@ -12,7 +12,7 @@ public:
     virtual void run(HashContext_t& context) = 0;
     virtual bool isValid(HashContext_t& context) = 0;
 
-    virtual void mutatate(HashMakerParams& params, Random& random) = 0;
+    virtual void mutate(HashMakerParams& params, Random& random) = 0;
 
     virtual std::unique_ptr<IHashOperator> clone() = 0;
 

@@ -162,18 +162,27 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Evaluation.cpp" />
+    <ClCompile Include="Evaluator.cpp" />
     <ClCompile Include="HashMaker.cpp" />
+    <ClCompile Include="HashModelCRC32.cpp" />
+    <ClCompile Include="HashModelFNV1a.cpp" />
+    <ClCompile Include="HashModelGenome.cpp" />
+    <ClCompile Include="HashModelMurmur32.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Operators.cpp" />
     <ClCompile Include="TestData.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BlockAllocator.h" />
-    <ClInclude Include="Evaluation.h" />
+    <ClInclude Include="Evaluator.h" />
     <ClInclude Include="Genome.h" />
     <ClInclude Include="HashContext.h" />
     <ClInclude Include="HashMaker.h" />
+    <ClInclude Include="HashModel.h" />
+    <ClInclude Include="HashModelCRC32.h" />
+    <ClInclude Include="HashModelFNV1a.h" />
+    <ClInclude Include="HashModelGenome.h" />
+    <ClInclude Include="HashModelMurmur32.h" />
     <ClInclude Include="Operator.h" />
     <ClInclude Include="Params.h" />
     <ClInclude Include="Random.h" />

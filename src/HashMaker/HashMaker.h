@@ -5,7 +5,7 @@
 #include <vector>
 
 #include "HashContext.h"
-#include "Evaluation.h"
+#include "Evaluator.h"
 #include "Random.h"
 #include "Operator.h"
 #include "Genome.h"
@@ -26,6 +26,7 @@ public:
 private:
     
     void initializeGenome(Genome_t& genome);
+    void randomizeGenomeOperators(Genome_t& genome);
     void evaluateGenome(Genome_t& genome);
     void epoch1();
 
@@ -35,7 +36,7 @@ private:
 private:
     Random _random;
     HashMakerParams _parameters;
-    Evaluation _evaluator;
+    Evaluator _evaluator;
     Genome_t _bestSolution;
     std::vector<Genome_t> _population;
     size_t _generation;

@@ -1,8 +1,9 @@
 #include "HashMaker.h"
 #include "Operator.h"
-#include "Evaluation.h"
+#include "Evaluator.h"
+#include "HashModelGenome.h"
 
-HashMaker::HashMaker() : _evaluator(_parameters)
+HashMaker::HashMaker()
 {
     reset(HashMakerParams());
 }
@@ -19,12 +20,20 @@ void HashMaker::reset(const HashMakerParams& params)
     for (size_t i = 0; i < _population.size(); i++)
     {
         initializeGenome(_population[i]);
+        randomizeGenomeOperators(_population[i]);
     }
-
-    _evaluator.reset();
 }
 
 void HashMaker::initializeGenome(Genome_t& genome)
+{
+    genome.fitness = 0.0;
+    genome.genomeSizeBytes = _parameters.hashSize;
+    genome.collisionRate = 0.0;
+    genome.stateUsage = 0.0;
+    genome.totalCollisions = 0.0;
+}
+
+void HashMaker::randomizeGenomeOperators(Genome_t& genome)
 {
     CreateOperators(_parameters, genome, _random);
 }
@@ -77,7 +86,31 @@ void HashMaker::evaluatePopulation()
 
 void HashMaker::evaluateGenome(Genome_t& genome)
 {
-    _evaluator.evaluate(genome);
+    auto hashModel = CreateHashModelGenome(genome);
+    Evaluator::Result_t res = _evaluator.evaluate(hashModel);
+
+    genome.fitness = 0.0;
+    genome.collisionRate = 0.0;
+    genome.stateUsage = 0.0;
+
+    if(res.totalTests == 0.0)
+        return;
+
+    double collisionRate = (res.totalCollisions / res.totalTests);
+    double fitnessCollisions = 1.0 - collisionRate;
+
+    double fitnessStateWrite = res.bitsWrite / res.bitsTotal;
+    double fitnessStateRead = res.bitsRead / res.bitsTotal;
+    double fitnessState = (fitnessStateWrite + fitnessStateRead) / 2.0;
+
+    double totalFitness = (fitnessCollisions + fitnessState);
+    double fitness = std::pow(totalFitness, 4.0);
+
+    genome.fitness = fitness;
+    genome.stateUsage = fitnessState;
+    genome.collisionRate = collisionRate;
+    genome.totalCollisions = res.totalCollisions;
+
 }
 
 void HashMaker::epoch()
@@ -125,15 +158,16 @@ void HashMaker::epoch1()
     {
         Genome_t child;
         initializeGenome(child);
+        randomizeGenomeOperators(child);
 
         _population.emplace_back(std::move(child));
     }
 
-    size_t poolSize = _population.size() - 1;
-
     // Create children based 50% of the best new random ones.
     while(_population.size() < _parameters.populationSize)
     {
+        size_t poolSize = _population.size() - 1;
+
         size_t index1;
         size_t index2;
         do 
@@ -143,7 +177,9 @@ void HashMaker::epoch1()
         } while (index1 == index2);
 
         Genome_t childA;
+        initializeGenome(childA);
         Genome_t childB;
+        initializeGenome(childB);
 
         const Genome_t& parentA = _population[index1];
         const Genome_t& parentB = _population[index2];
@@ -182,7 +218,8 @@ void HashMaker::mutate(Genome_t& genome)
     {
         if (_random.randomChance(_parameters.mutationRate))
         {
-            genome.operators[i]->mutatate(_parameters, _random);
+            // Mutate operator.
+            genome.operators[i]->mutate(_parameters, _random);
         }
         else if (_random.randomChance(_parameters.operatorReplaceChance))
         {
@@ -199,6 +236,7 @@ void HashMaker::mutate(Genome_t& genome)
         }
         else if (_random.randomChance(_parameters.operatorSwapChance))
         {
+            // Swap two existing operators.
             size_t otherIdx;
             do 
             {
