@@ -110,7 +110,6 @@ void HashMaker::evaluateGenome(Genome_t& genome)
     genome.stateUsage = fitnessState;
     genome.collisionRate = collisionRate;
     genome.totalCollisions = res.totalCollisions;
-
 }
 
 void HashMaker::epoch()
@@ -163,11 +162,11 @@ void HashMaker::epoch1()
         _population.emplace_back(std::move(child));
     }
 
+    size_t poolSize = _population.size() - 1;
+
     // Create children based 50% of the best new random ones.
     while(_population.size() < _parameters.populationSize)
     {
-        size_t poolSize = _population.size() - 1;
-
         size_t index1;
         size_t index2;
         do 
@@ -214,6 +213,8 @@ void HashMaker::crossover(Genome_t& child, const Genome_t& parentA, const Genome
 
 void HashMaker::mutate(Genome_t& genome)
 {
+    HashContext_t ctx(_parameters.hashSize);
+
     for (size_t i = 0; i < genome.operators.size(); i++)
     {
         if (_random.randomChance(_parameters.mutationRate))
@@ -224,8 +225,6 @@ void HashMaker::mutate(Genome_t& genome)
         else if (_random.randomChance(_parameters.operatorReplaceChance))
         {
             // Swap with new operator.
-            HashContext_t ctx(_parameters.hashSize);
-
             std::unique_ptr<IHashOperator> op;
             do 
             {
@@ -244,6 +243,25 @@ void HashMaker::mutate(Genome_t& genome)
             } while (otherIdx == i);
 
             std::swap(genome.operators[i], genome.operators[otherIdx]);
+        }
+        else if (_random.randomChance(_parameters.operatorAddChance))
+        {
+            // Add new random operator at a random position.
+            size_t pos = _random.randomIndex(genome.operators);
+
+            std::unique_ptr<IHashOperator> op;
+            do
+            {
+                op = CreateRandomOperator(_parameters, _random);
+            } while (op->isValid(ctx) == false);
+
+            genome.operators.insert(genome.operators.begin() + pos, std::move(op));
+        }
+        else if (_random.randomChance(_parameters.operatorRemoveChance) && genome.operators.size() >= 2)
+        {
+            // Remove a random operator.
+            size_t pos = _random.randomIndex(genome.operators);
+            genome.operators.erase(genome.operators.begin() + pos);
         }
     }
 }
