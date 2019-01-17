@@ -27,6 +27,24 @@ enum HashOperatorTypes : size_t
     HashOperatorTypeStateNot,
 };
 
+template<typename T>
+inline size_t mutateOffset(size_t offset, HashMakerParams& params, Random& random)
+{
+    if (params.hashSize > sizeof(T))
+    {
+        size_t offsetRange = params.hashSize - sizeof(T);
+        offset = random.randomIntegerRange<size_t>(0, offsetRange);
+#ifdef _DEBUG
+        if (offset + sizeof(T) > params.hashSize)
+        {
+            __debugbreak();
+        }
+#endif
+        return offset;
+    }
+    return offset;
+}
+
 class HashOperatorBase
 {
 protected:
@@ -78,8 +96,7 @@ public:
 
     virtual void mutate(HashMakerParams& params, Random& random) override
     {
-        //size_t newOffset = random.randomIntegerRange<size_t>(0, params.hashSize - sizeof(T) - 1);
-        //_offset = newOffset;
+        _offset = mutateOffset<T>(_offset, params, random);
     }
 
     virtual bool isValid(HashContext_t& context)
@@ -111,31 +128,42 @@ public:
     };
     HashOperatorStateRolMagic(size_t offset, uint64_t value) : _offset(offset), _value(T(value)) {}
 
+    template<typename _T> struct RotateLeft;
+
+    template<> struct RotateLeft<uint8_t> {
+        static uint8_t rotate(uint8_t val, int len) {
+            return _rotl8(val, len);
+        }
+    };
+
+    template<> struct RotateLeft<uint16_t> {
+        static uint16_t rotate(uint16_t val, int len) {
+            return _rotl16(val, len);
+        }
+    };
+
+    template<> struct RotateLeft<uint32_t> {
+        static uint32_t rotate(uint32_t val, int len) {
+            return _rotl(val, len);
+        }
+    };
+
+    template<> struct RotateLeft<uint64_t> {
+        static uint64_t rotate(uint64_t val, int len) {
+            return _rotl64(val, len);
+        }
+    };
+
     virtual void run(HashContext_t& context) override
     {
         T val = read<T>(context, _offset);
-        switch (sizeof(T))
-        {
-        case 1:
-            val = (T)_rotl8(val, _value);
-            break;
-        case 2:
-            val = (T)_rotl16(val, _value);
-            break;
-        case 4:
-            val = (T)_rotl(val, _value);
-            break;
-        case 8:
-            val = (T)_rotl64(val, _value);
-            break;
-        }
+        val = RotateLeft<T>::rotate(val, (int)_value);
         write<T>(context, _offset, _value);
     }
 
     virtual void mutate(HashMakerParams& params, Random& random) override
     {
-        //size_t newOffset = random.randomIntegerRange<size_t>(0, params.hashSize - sizeof(T) - 1);
-        //_offset = newOffset;
+        _offset = mutateOffset<T>(_offset, params, random);
 
         uint64_t val = random.randomIntegerRange<uint64_t>(0, std::numeric_limits<T>::max());
         _value = (T)val;
@@ -170,29 +198,43 @@ public:
     };
     HashOperatorStateRorMagic(size_t offset, uint64_t value) : _offset(offset), _value(T(value)) {}
 
+    template<typename _T> struct RotateRight;
+
+    template<> struct RotateRight<uint8_t> {
+        static uint8_t rotate(uint8_t val, int len) {
+            return _rotr8(val, len);
+        }
+    };
+
+    template<> struct RotateRight<uint16_t> {
+        static uint16_t rotate(uint16_t val, int len) {
+            return _rotr16(val, len);
+        }
+    };
+
+    template<> struct RotateRight<uint32_t> {
+        static uint32_t rotate(uint32_t val, int len) {
+            return _rotr(val, len);
+        }
+    };
+
+    template<> struct RotateRight<uint64_t> {
+        static uint64_t rotate(uint64_t val, int len) {
+            return _rotr64(val, len);
+        }
+    };
+
     virtual void run(HashContext_t& context) override
     {
         T val = read<T>(context, _offset);
-        switch (sizeof(T))
-        {
-        case 1:
-            val = (T)_rotr8(val, (int)_value);
-            break;
-        case 2:
-            val = (T)_rotr16(val, (int)_value);
-            break;
-        case 4:
-            val = (T)_rotr(val, (int)_value);
-            break;
-        case 8:
-            val = (T)_rotr64(val, (int)_value);
-            break;
-        }
+        val = RotateRight<T>::rotate(val, (int)_value);
         write<T>(context, _offset, _value);
     }
 
     virtual void mutate(HashMakerParams& params, Random& random) override
     {
+        _offset = mutateOffset<T>(_offset, params, random);
+
         uint64_t val = random.randomIntegerRange<uint64_t>(0, std::numeric_limits<T>::max());
         _value = (T)val;
     }
@@ -233,8 +275,7 @@ public:
 
     virtual void mutate(HashMakerParams& params, Random& random) override
     {
-        //size_t newOffset = random.randomIntegerRange<size_t>(0, params.hashSize - sizeof(T) - 1);
-        //_offset = newOffset;
+        _offset = mutateOffset<T>(_offset, params, random);
 
         uint64_t val = random.randomIntegerRange<uint64_t>(0, std::numeric_limits<T>::max());
         _value = (T)val;
@@ -278,8 +319,7 @@ public:
 
     virtual void mutate(HashMakerParams& params, Random& random) override
     {
-        //size_t newOffset = random.randomIntegerRange<size_t>(0, params.hashSize - sizeof(T) - 1);
-        //_offset = newOffset;
+        _offset = mutateOffset<T>(_offset, params, random);
 
         uint64_t val = random.randomIntegerRange<uint64_t>(0, std::numeric_limits<T>::max());
         _value = (T)val;
@@ -323,8 +363,7 @@ public:
 
     virtual void mutate(HashMakerParams& params, Random& random) override
     {
-        //size_t newOffset = random.randomIntegerRange<size_t>(0, params.hashSize - sizeof(T) - 1);
-        //_offset = newOffset;
+        _offset = mutateOffset<T>(_offset, params, random);
 
         uint64_t val = random.randomIntegerRange<uint64_t>(0, std::numeric_limits<T>::max());
         _value = (T)val;
@@ -369,6 +408,8 @@ public:
 
     virtual void mutate(HashMakerParams& params, Random& random) override
     {
+        _offset = mutateOffset<T>(_offset, params, random);
+
         uint64_t val = random.randomIntegerRange<uint64_t>(0, 32);
         _value = (T)val;
     }
@@ -411,6 +452,8 @@ public:
 
     virtual void mutate(HashMakerParams& params, Random& random) override
     {
+        _offset = mutateOffset<T>(_offset, params, random);
+
         uint64_t val = random.randomIntegerRange<uint64_t>(0, 32);
         _value = (T)val;
     }
@@ -453,6 +496,8 @@ public:
 
     virtual void mutate(HashMakerParams& params, Random& random) override
     {
+        _offset = mutateOffset<T>(_offset, params, random);
+
         uint64_t val = random.randomIntegerRange<uint64_t>(0, std::numeric_limits<T>::max());
         _value = (T)val;
     }
@@ -495,6 +540,8 @@ public:
 
     virtual void mutate(HashMakerParams& params, Random& random) override
     {
+        _offset = mutateOffset<T>(_offset, params, random);
+
         uint64_t val = random.randomIntegerRange<uint64_t>(0, std::numeric_limits<T>::max());
         _value = (T)val;
     }
@@ -537,6 +584,7 @@ public:
 
     virtual void mutate(HashMakerParams& params, Random& random) override
     {
+        _offset = mutateOffset<T>(_offset, params, random);
     }
 
     virtual bool isValid(HashContext_t& context)
@@ -577,6 +625,7 @@ public:
 
     virtual void mutate(HashMakerParams& params, Random& random) override
     {
+        _offset = mutateOffset<T>(_offset, params, random);
     }
 
     virtual bool isValid(HashContext_t& context)
@@ -617,6 +666,7 @@ public:
 
     virtual void mutate(HashMakerParams& params, Random& random) override
     {
+        _offset = mutateOffset<T>(_offset, params, random);
     }
 
     virtual bool isValid(HashContext_t& context)
@@ -657,6 +707,7 @@ public:
 
     virtual void mutate(HashMakerParams& params, Random& random) override
     {
+        _offset = mutateOffset<T>(_offset, params, random);
     }
 
     virtual bool isValid(HashContext_t& context)
@@ -696,6 +747,8 @@ public:
 
     virtual void mutate(HashMakerParams& params, Random& random) override
     {
+        _offset1 = mutateOffset<T>(_offset1, params, random);
+        _offset2 = mutateOffset<T>(_offset1, params, random);
     }
 
     virtual bool isValid(HashContext_t& context)
@@ -738,6 +791,8 @@ public:
 
     virtual void mutate(HashMakerParams& params, Random& random) override
     {
+        _offset1 = mutateOffset<T>(_offset1, params, random);
+        _offset2 = mutateOffset<T>(_offset2, params, random);
     }
 
     virtual bool isValid(HashContext_t& context)
@@ -780,6 +835,8 @@ public:
 
     virtual void mutate(HashMakerParams& params, Random& random) override
     {
+        _offset1 = mutateOffset<T>(_offset1, params, random);
+        _offset2 = mutateOffset<T>(_offset2, params, random);
     }
 
     virtual bool isValid(HashContext_t& context)
@@ -822,6 +879,8 @@ public:
 
     virtual void mutate(HashMakerParams& params, Random& random) override
     {
+        _offset1 = mutateOffset<T>(_offset1, params, random);
+        _offset2 = mutateOffset<T>(_offset2, params, random);
     }
 
     virtual bool isValid(HashContext_t& context)
@@ -862,6 +921,7 @@ public:
 
     virtual void mutate(HashMakerParams& params, Random& random) override
     {
+        _offset = mutateOffset<T>(_offset, params, random);
     }
 
     virtual bool isValid(HashContext_t& context)
