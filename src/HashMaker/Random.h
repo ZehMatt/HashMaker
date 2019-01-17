@@ -51,6 +51,11 @@ public:
         return dist(_prng);
     }
 
+    bool randomChance(double normalizedPercentage)
+    {
+        return randomRealRange<double>(0.0, 1.0) < normalizedPercentage;
+    }
+
     bool randomChance(float normalizedPercentage)
     {
         return randomRealRange<double>(0.0, 1.0) < normalizedPercentage;

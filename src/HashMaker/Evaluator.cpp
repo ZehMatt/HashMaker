@@ -121,7 +121,7 @@ Evaluator::Result_t Evaluator::evaluate(std::unique_ptr<IHashModel>& hashModel)
 
     const TestData& testData = TestData::get();
 
-    const double hashBitSize = hashModel->hashBitSize();
+    const double hashBitSize = (double)hashModel->hashBitSize();
 
     // Test against collisions.
     {
